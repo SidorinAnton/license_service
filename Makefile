@@ -57,13 +57,28 @@ install-client:
 	cd license_client && uv pip install -e .
 	cd license_client && uv tool install .
 
-run-client:
-	cd license_client && PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 https://localhost:8000/api/v1/client/activate
+ifeq (run-client,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
 
+run-client:
+	$(eval CLIENT_KEY := $(or $(word 1,$(RUN_ARGS)),ABCD-1234-EFGH-5678))
+	cd license_client && PYTHONPATH=. uv run python src/main.py $(CLIENT_KEY) http://localhost:8000/api/v1/client/activate
 
 run-server:
 	cd license_server && PYTHONPATH=. uv run uvicorn src.main:app --reload --port 8000
 
+# ==========================================
+# DATABASE SEEDING
+# ==========================================
+generate-license:
+	cd license_server && PYTHONPATH=. uv run python src/generate_license.py
+	docker exec -it license_postgres psql -U admin -d license_db -c "SELECT * FROM licenses;"
+
+docker-generate-license:
+	docker exec -it -e PYTHONPATH=. license_app uv run python src/generate_license.py
+	docker exec -it license_postgres psql -U admin -d license_db -c "SELECT * FROM licenses;"
 
 # ==========================================
 # DOCKER COMPOSE
@@ -75,7 +90,8 @@ docker-down:
 	cd license_server && docker-compose -f docker-compose.dev.yaml down
 
 docker-migrate:
-	cd license_server && docker exec -it license_app uv run alembic upgrade head
+	docker exec -it license_app uv run alembic upgrade head
 
 docker-migrate-rollback:
-	cd license_server && docker exec -it license_app uv run alembic downgrade -1
+	docker exec -it license_app uv run alembic downgrade -1
+
