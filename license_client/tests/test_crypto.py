@@ -67,7 +67,7 @@ def decrypt_payload_on_server(encrypted: EncryptedPayload, private_key_pem: str)
     # Расшифровываем пэйлоад через AES-GCM
     aes_gcm = AESGCM(aes_key)
     decrypted_data_bytes = aes_gcm.decrypt(
-        base64.b64decode(encrypted.nones), base64.b64decode(encrypted.cipher_data), associated_data=None
+        base64.b64decode(encrypted.nonce), base64.b64decode(encrypted.cipher_data), associated_data=None
     )
 
     return json.loads(decrypted_data_bytes.decode("utf-8"))

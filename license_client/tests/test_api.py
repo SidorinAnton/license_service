@@ -13,7 +13,7 @@ def test_send_activation_success(mocker):
     mock_response.json.return_value = {"status": "active", "expires_at": "2027-01-01"}
     mock_post.return_value = mock_response
 
-    payload = EncryptedPayload(encrypted_sync_key="key", nones="nones", cipher_data="data")
+    payload = EncryptedPayload(encrypted_sync_key="key", nonce="nonce", cipher_data="data")
 
     result = send_activation("http://localhost:8000/api/v1/activate", payload)
 
@@ -39,7 +39,7 @@ def test_send_activation_http_error(mocker):
     with pytest.raises(RuntimeError) as exc_info:
         send_activation(
             "http://localhost:8000/api/v1/activate",
-            EncryptedPayload(encrypted_sync_key="key", nones="nones", cipher_data="data"),
+            EncryptedPayload(encrypted_sync_key="key", nonce="nonce", cipher_data="data"),
         )
 
         assert "Server error (400)" in str(exc_info.value)
@@ -53,7 +53,7 @@ def test_send_activation_network_error(mocker):
     with pytest.raises(RuntimeError) as exc_info:
         send_activation(
             "http://localhost:8000/api/v1/activate",
-            EncryptedPayload(encrypted_sync_key="key", nones="nones", cipher_data="data"),
+            EncryptedPayload(encrypted_sync_key="key", nonce="nonce", cipher_data="data"),
         )
 
         assert "Network error" in str(exc_info.value)
