@@ -1,0 +1,11 @@
+vault.txt
+
+.idea
+.vscode
+__pycache__
+.mypy_cache
+.ruff_cache
+
+venv
+.venv
+
