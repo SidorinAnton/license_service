@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: license_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: license_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/18/docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d license_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - license_net
+
+  app:
+    build: .
+    container_name: license_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://admin:admin@postgres:5432/license_db
+      - RUNNING_IN_DOCKER=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - .:/app
+    networks:
+      - license_net
+
+volumes:
+  postgres_data:
+
+networks:
+  license_net:
+    driver: bridge

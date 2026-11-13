@@ -1,0 +1,7 @@
+*.pyc
+.idea
+.mypy_cache
+__pycache__
+docker-compose.yaml
+docker-compose.dev.yaml
+.venv
