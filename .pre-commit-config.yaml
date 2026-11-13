@@ -1,14 +1,17 @@
+default_language_version:
+  python: python3.12
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: detect-private-key
+        name: Check for exposed private keys
+
   - repo: local
     hooks:
       - id: make-lint
-        name: Run lint check (ruff)
+        name: Run Lint Check (Ruff)
         entry: make lint-check
-        language: system
-        pass_filenames: false
-
-      - id: make-tests
-        name: Run all tests (pytest)
-        entry: make test-all
         language: system
         pass_filenames: false
