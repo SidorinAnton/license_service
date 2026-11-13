@@ -1,5 +1,6 @@
 import base64
 import json
+import time
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
@@ -15,9 +16,9 @@ def load_private_key() -> bytes:
         return f.read()
 
 
-def decrypt_payload(encrypted_key_b64: str, nones_b64: str, cipher_data_b64: str) -> dict:
+def decrypt_payload(encrypted_key_b64: str, nonce_b64: str, cipher_data_b64: str) -> dict:
     encrypted_key = base64.b64decode(encrypted_key_b64)
-    nones = base64.b64decode(nones_b64)
+    nonce = base64.b64decode(nonce_b64)
     cipher_data = base64.b64decode(cipher_data_b64)
 
     private_key_pem = load_private_key()
@@ -35,9 +36,14 @@ def decrypt_payload(encrypted_key_b64: str, nones_b64: str, cipher_data_b64: str
     aes_gcm = AESGCM(symmetric_key)
 
     try:
-        decrypted_data = aes_gcm.decrypt(nones, cipher_data, None)
+        decrypted_data = aes_gcm.decrypt(nonce, cipher_data, None)
     except InvalidTag:
         raise ValueError("Decryption failed: invalid tag or corrupted payload")
 
     decrypted_data = json.loads(decrypted_data.decode("utf-8"))
+
+    timestamp = decrypted_data.get("timestamp")
+    if not timestamp or abs(time.time() - timestamp) > 300:
+        raise ValueError("Payload expired or invalid timestamp")
+
     return decrypted_data

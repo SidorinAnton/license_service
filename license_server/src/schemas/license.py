@@ -3,7 +3,7 @@ from pydantic import BaseModel, field_validator
 
 class EncryptedActivationRequest(BaseModel):
     encrypted_sync_key: str
-    nones: str
+    nonce: str
     cipher_data: str
 
 
@@ -16,6 +16,7 @@ class DeviceDataSchema(BaseModel):
     cpu_cores: int
     mac_address: str | None = None
     machine_id: str
+    timestamp: int
 
     @field_validator("license_key")
     @classmethod
