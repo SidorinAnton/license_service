@@ -15,7 +15,7 @@ def test_decrypt_payload_success():
 
     decrypted_data = decrypt_payload(
         encrypted_key_b64=encrypted_packet["encrypted_sync_key"],
-        nones_b64=encrypted_packet["nones"],
+        nonce_b64=encrypted_packet["nonce"],
         cipher_data_b64=encrypted_packet["cipher_data"],
     )
     assert decrypted_data["license_key"] == original_data["license_key"]
@@ -37,7 +37,7 @@ def test_decrypt_payload_invalid_tag_or_corrupted():
     with pytest.raises(ValueError) as exc_info:
         decrypt_payload(
             encrypted_key_b64=encrypted_packet["encrypted_sync_key"],
-            nones_b64=encrypted_packet["nones"],
+            nonce_b64=encrypted_packet["nonce"],
             cipher_data_b64=corrupted_b64,
         )
         assert "data integrity check failed" in str(exc_info.value)
@@ -47,7 +47,7 @@ def test_decrypt_payload_invalid_base64():
     with pytest.raises(ValueError) as exc_info:
         decrypt_payload(
             encrypted_key_b64="not-a-base64-string!@#$",
-            nones_b64="not-nones",
+            nonce_b64="not-nonce",
             cipher_data_b64="not-cipher_data",
         )
 

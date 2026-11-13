@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from src.schemas.license import DeviceDataSchema
@@ -15,6 +17,7 @@ def get_device_data(license_key, machine_id="machine-1") -> DeviceDataSchema:
         cpu_arch="",
         cpu_cores=8,
         mac_address="",
+        timestamp=int(time.time()),
     )
 
 

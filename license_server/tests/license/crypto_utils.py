@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import time
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -29,6 +30,7 @@ def encrypt_test_payload(
         "cpu_arch": cpu_arch,
         "cpu_cores": cpu_cores,
         "mac_address": mac_address,
+        "timestamp": int(time.time()),
     }
 
     private_key_pem = load_private_key()
@@ -36,11 +38,11 @@ def encrypt_test_payload(
     public_key = private_key.public_key()
 
     aes_key = AESGCM.generate_key(bit_length=256)
-    nones = os.urandom(12)
+    nonce = os.urandom(12)
 
     aes_gcm = AESGCM(aes_key)
     json_data = json.dumps(raw_payload).encode("utf-8")
-    cipher_data = aes_gcm.encrypt(nones, json_data, None)
+    cipher_data = aes_gcm.encrypt(nonce, json_data, None)
 
     encrypted_sync_key = public_key.encrypt(
         aes_key,
@@ -52,6 +54,6 @@ def encrypt_test_payload(
     )
     return {
         "encrypted_sync_key": base64.b64encode(encrypted_sync_key).decode("utf-8"),
-        "nones": base64.b64encode(nones).decode("utf-8"),
+        "nonce": base64.b64encode(nonce).decode("utf-8"),
         "cipher_data": base64.b64encode(cipher_data).decode("utf-8"),
     }

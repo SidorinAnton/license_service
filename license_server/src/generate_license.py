@@ -1,5 +1,6 @@
 import datetime
 import logging
+
 from src.core.database import SessionLocal
 from src.models.license import LicenseModel
 
@@ -31,7 +32,7 @@ def generate_licenses():
         db.commit()
         logger.info(f"Successfully added {created_count} new test licenses to the database.")
 
-    except Exception as e:
+    except RuntimeError as e:
         db.rollback()
         logger.error(f"Failed to seed database: {e}")
     finally:

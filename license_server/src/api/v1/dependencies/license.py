@@ -8,7 +8,7 @@ def get_verified_activation_data(raw_request: EncryptedActivationRequest) -> Dev
     try:
         decrypted_dict = decrypt_payload(
             encrypted_key_b64=raw_request.encrypted_sync_key,
-            nones_b64=raw_request.nones,
+            nonce_b64=raw_request.nonce,
             cipher_data_b64=raw_request.cipher_data,
         )
         return DeviceDataSchema(**decrypted_dict)
