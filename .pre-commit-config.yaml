@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: make-lint
+        name: Run lint check (ruff)
+        entry: make lint-check
+        language: system
+        pass_filenames: false
+
+      - id: make-tests
+        name: Run all tests (pytest)
+        entry: make test-all
+        language: system
+        pass_filenames: false
