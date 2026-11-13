@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from src.main import is_license_key_valid
+from src.main import is_license_key_valid, load_public_key
 
 
 @pytest.mark.parametrize(
@@ -21,6 +21,9 @@ from src.main import is_license_key_valid
 )
 def test_license_key_validation(key, expected):
     assert is_license_key_valid(key) is expected
+
+def test_load_public_key():
+    assert "BEGIN PUBLIC KEY" in load_public_key()
 
 
 def test_cli_success():

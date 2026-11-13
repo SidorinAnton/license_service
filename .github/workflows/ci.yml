@@ -35,11 +35,20 @@ jobs:
           cd ../license_server && uv sync --dev
 
       - name: Run Ruff linter
-        run: make lint-check
+        run: |
+          cd license_client && uv run ruff check .
+          cd ../license_server && uv run ruff check .
 
   test-client:
-    name: Test Client
-    runs-on: ubuntu-latest
+    name: Test Client (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +64,10 @@ jobs:
           python-version: "3.12"
 
       - name: Generate RSA keys
-        run: make keys
+        run: |
+          mkdir -p license_server/config license_client/config
+          openssl genrsa -out license_server/config/private_key.pem 2048
+          openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/config/public_key.pem
 
       - name: Install dependencies
         run: cd license_client && uv sync --dev
@@ -69,13 +81,16 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report-client
+          name: coverage-report-client-${{ matrix.os }}
           path: license_client/coverage.xml
           retention-days: 7
 
   test-server:
     name: Test Server
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -91,7 +106,10 @@ jobs:
           python-version: "3.12"
 
       - name: Generate RSA keys
-        run: make keys
+        run: |
+          mkdir -p license_server/config license_client/config
+          openssl genrsa -out license_server/config/private_key.pem 2048
+          openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/config/public_key.pem
 
       - name: Install dependencies
         run: cd license_server && uv sync --dev
