@@ -67,9 +67,7 @@ def decrypt_payload_on_server(encrypted: EncryptedPayload, private_key_pem: str)
     # Расшифровываем пэйлоад через AES-GCM
     aes_gcm = AESGCM(aes_key)
     decrypted_data_bytes = aes_gcm.decrypt(
-        base64.b64decode(encrypted.nones),
-        base64.b64decode(encrypted.cipher_data),
-        associated_data=None
+        base64.b64decode(encrypted.nones), base64.b64decode(encrypted.cipher_data), associated_data=None
     )
 
     return json.loads(decrypted_data_bytes.decode("utf-8"))
@@ -98,7 +96,7 @@ def test_encryption_hashsum_fails(rsa_key_pair, device_data):
     encrypted = encrypt_payload(device_data, pub_pem)
 
     cipher_bytes = list(encrypted.cipher_data)
-    cipher_bytes[0] = 'A' if cipher_bytes[0] != 'A' else 'B'
+    cipher_bytes[0] = "A" if cipher_bytes[0] != "A" else "B"
     encrypted.cipher_data = "".join(cipher_bytes)
 
     with pytest.raises(InvalidTag):

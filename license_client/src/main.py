@@ -49,8 +49,7 @@ def main():
 
     if not is_license_key_valid(args.license_key):
         print(
-            f"Error: Invalid license format: '{args.license_key}'. "
-            f"Expected format is XXXX-XXXX-XXXX-XXXX.",
+            f"Error: Invalid license format: '{args.license_key}'. Expected format is XXXX-XXXX-XXXX-XXXX.",
             file=sys.stderr,
         )
         sys.exit(1)
