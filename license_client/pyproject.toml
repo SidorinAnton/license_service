@@ -21,6 +21,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
     "pytest-mock>=3.17.0",
     "ruff>=0.17.5",
 ]
@@ -43,3 +44,14 @@ packages = ["src/"]
 
 [tool.hatch.build.targets.editable]
 packages = ["src/"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]

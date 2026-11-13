@@ -36,6 +36,13 @@ test-server:
 
 test-all: test-client test-server
 
+test-client-cov:
+	cd license_client && PYTHONPATH=. uv run pytest --cov=src --cov-report=term-missing --cov-report=html -v
+
+test-server-cov:
+	cd license_server && PYTHONPATH=. uv run pytest --cov=src --cov-report=term-missing --cov-report=html -v
+
+test-all-cov: test-client-cov test-server-cov
 
 # ==========================================
 # MIGRATIONS (Server)
