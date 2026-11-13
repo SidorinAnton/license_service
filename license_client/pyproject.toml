@@ -1,0 +1,45 @@
+[project]
+name = "license-client"
+version = "0.1.0"
+description = "Secure license activation CLI client"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=50.0.2",
+    "getmac>=0.9.6",
+    "py-machineid>=1.0.0",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+license-client = "src.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-mock>=3.17.0",
+    "ruff>=0.17.5",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+    "E501", # line-length
+    "E741", # ambiguous variable name
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 32
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/"]
+
+[tool.hatch.build.targets.editable]
+packages = ["src/"]
