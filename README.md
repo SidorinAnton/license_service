@@ -1,10 +1,11 @@
 # Сервис активации лицензий
 
 [![CI](https://github.com/SidorinAnton/license_service/actions/workflows/ci.yml/badge.svg)](https://github.com/SidorinAnton/license_service/actions/workflows/ci.yml)
+[![OS](https://img.shields.io/badge/OS-Linux%20%7C%20Windows%20%7C%20macOS-blue)](https://github.com/SidorinAnton/license_service/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 ![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen.svg)
 
-Цель: необходимо реализовать MVP сервиса активаций лицензий.
+> **Цель**: необходимо реализовать MVP сервиса активаций лицензий.
 
 ## Архитектура
 
