@@ -15,8 +15,7 @@ pytest_plugins = [
 ]
 
 
-@pytest.fixture(scope="session")
-def setup_database():
+def create_test_db_url():
     curr_url = make_url(str(settings.DATABASE_URL))
     test_db = "test_" + curr_url.database
 
@@ -24,14 +23,25 @@ def setup_database():
         # По идее это не может вызвать инъекцию
         raise ValueError("Test database name is unsafe")
 
-    admin_url = curr_url.set(database="postgres")
-    test_url = curr_url.set(database=test_db)
+    return curr_url.set(database=test_db)
+
+
+def pytest_report_header():
+    return [
+        f"test_db_url: {create_test_db_url().render_as_string(hide_password=True)}",
+    ]
+
+
+@pytest.fixture(scope="session")
+def setup_database():
+    test_url = create_test_db_url()
+    admin_url = test_url.set(database="postgres")
 
     admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
     with admin_engine.connect() as conn:
-        exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": test_db}).scalar()
+        exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": test_url.database}).scalar()
         if not exists:
-            conn.execute(text(f"CREATE DATABASE {test_db}"))
+            conn.execute(text(f"CREATE DATABASE {test_url.database}"))
 
     engine = create_engine(test_url)
     Base.metadata.drop_all(engine)
@@ -43,7 +53,7 @@ def setup_database():
     engine.dispose()
 
     with admin_engine.connect() as conn:
-        conn.execute(text(f"DROP DATABASE IF EXISTS {test_db}"))
+        conn.execute(text(f"DROP DATABASE IF EXISTS {test_url.database}"))
 
 
 @pytest.fixture

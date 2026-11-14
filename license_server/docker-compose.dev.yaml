@@ -23,6 +23,7 @@ services:
   app:
     build: .
     container_name: license_app
+    restart: always
     env_file:
       - .env
     environment:
@@ -37,7 +38,11 @@ services:
       sh -c "uv run alembic upgrade head &&
              uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
-      - .:/app
+      - ./alembic:/app/alembic
+      - ./config:/app/config
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./alembic.ini:/app/alembic.ini
     networks:
       - license_net
 
