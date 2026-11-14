@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.license import get_verified_activation_data
@@ -14,8 +14,5 @@ def activate_license(
     device_data: DeviceDataSchema = Depends(get_verified_activation_data),
     db: Session = Depends(get_db),
 ):
-    try:
-        result = activate_device_service(db=db, device_data=device_data)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    result = activate_device_service(db=db, device_data=device_data)
+    return result

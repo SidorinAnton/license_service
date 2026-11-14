@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import time
@@ -19,6 +20,7 @@ def encrypt_test_payload(
     cpu_arch="bbb",
     cpu_cores=8,
     mac_address="ccc",
+    timestamp: int | None = None,
 ) -> dict[str, bytes]:
     raw_payload = {
         "license_key": license_key,
@@ -29,7 +31,7 @@ def encrypt_test_payload(
         "cpu_arch": cpu_arch,
         "cpu_cores": cpu_cores,
         "mac_address": mac_address,
-        "timestamp": int(time.time()),
+        "timestamp": timestamp or int(time.time()),
     }
 
     private_key_pem = load_private_key()
@@ -55,4 +57,12 @@ def encrypt_test_payload(
         "encrypted_sync_key": encrypted_sync_key,
         "nonce": nonce,
         "cipher_data": cipher_data,
+    }
+
+
+def build_http_payload(data: dict[str, bytes]) -> dict[str, str]:
+    return {
+        "encrypted_sync_key": base64.b64encode(data["encrypted_sync_key"]).decode(),
+        "nonce": base64.b64encode(data["nonce"]).decode(),
+        "cipher_data": base64.b64encode(data["cipher_data"]).decode(),
     }

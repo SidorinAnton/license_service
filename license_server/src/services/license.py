@@ -1,29 +1,42 @@
+import time
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from src.core.exceptions import (
+    LicenseAlreadyActivatedError,
+    LicenseExpiredError,
+    LicenseInactiveError,
+    LicenseNotFoundError,
+    TimestampExpiredError,
+)
 from src.models.license import ActivationModel, LicenseModel
 from src.schemas.license import DeviceDataSchema
 
+TIMESTAMP_TTL = 300
+
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
+    if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:
+        raise TimestampExpiredError("Payload expired or invalid timestamp")
+
     license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).first()
 
     if license_obj is None:
-        raise ValueError("License key not found")
+        raise LicenseNotFoundError("License key not found")
 
     if not license_obj.is_active:
-        raise ValueError("License key is deactivated")
+        raise LicenseInactiveError("License key is deactivated")
 
     if license_obj.expires_at and license_obj.expires_at < datetime.now():
-        raise ValueError("License key has expired")
+        raise LicenseExpiredError("License key has expired")
 
     existing_activation = db.query(ActivationModel).filter(ActivationModel.license_id == license_obj.id).first()
 
     if existing_activation:
         if existing_activation.machine_id == device_data.machine_id:
             return {"status": "already_activated", "message": "Device is already registered for this license"}
-        raise ValueError("License is already used")
+        raise LicenseAlreadyActivatedError("License is already used")
 
     new_activation = ActivationModel(
         license_id=license_obj.id,

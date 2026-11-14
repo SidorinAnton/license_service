@@ -2,6 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
+from src.api.v1.handlers import register_exception_handlers
 from src.api.v1.router import api_router
 from src.core.config import settings
 from src.core.logger import setup_logging
@@ -15,6 +16,8 @@ app = FastAPI(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+register_exception_handlers(app)
 
 
 @app.get("/")
