@@ -1,5 +1,3 @@
-import base64
-
 import pytest
 
 from src.services.crypto import decrypt_payload

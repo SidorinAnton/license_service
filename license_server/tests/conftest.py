@@ -39,7 +39,9 @@ def setup_database():
 
     admin_engine = create_engine(admin_url, isolation_level="AUTOCOMMIT")
     with admin_engine.connect() as conn:
-        exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": test_url.database}).scalar()
+        exists = conn.execute(
+            text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": test_url.database}
+        ).scalar()
         if not exists:
             conn.execute(text(f"CREATE DATABASE {test_url.database}"))
 
