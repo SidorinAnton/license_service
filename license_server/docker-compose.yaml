@@ -22,12 +22,13 @@ services:
   app:
     build: .
     container_name: license_app
+    env_file:
+      - .env
     restart: always
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - RUNNING_IN_DOCKER=true
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy

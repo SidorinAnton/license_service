@@ -23,12 +23,13 @@ services:
   app:
     build: .
     container_name: license_app
-    restart: always
+    env_file:
+      - .env
+    environment:
+      # переопределяем host. В .env -- localhost, тут -- postgres
+      DATABASE_URL: postgresql+psycopg://admin:admin@postgres:5432/license_db
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+psycopg://admin:admin@postgres:5432/license_db
-      - RUNNING_IN_DOCKER=true
     depends_on:
       postgres:
         condition: service_healthy
