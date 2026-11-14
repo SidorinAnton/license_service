@@ -86,7 +86,7 @@ jobs:
           retention-days: 7
 
   test-server:
-    name: Test Server
+    name: Test Server (Docker)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -94,30 +94,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "license_server/pyproject.toml"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Generate RSA keys
+      - name: Generate RSA keys & dummy .env
         run: |
           mkdir -p license_server/config license_client/config
           openssl genrsa -out license_server/config/private_key.pem 2048
           openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/config/public_key.pem
+          # Создаем пустой .env, чтобы docker-compose.dev.yaml не упал при отсутствии файла
+          touch license_server/.env
 
-      - name: Install dependencies
-        run: cd license_server && uv sync --dev
-
-      - name: Run tests with coverage
+      - name: Build and start Docker Compose
         run: |
           cd license_server
-          PYTHONPATH=. uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -v
+          docker compose -f docker-compose.dev.yaml up -d --build
+
+      - name: Run tests inside Docker container
+        run: |
+          cd license_server
+          docker compose -f docker-compose.dev.yaml exec -T app uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -v
+
+      - name: Copy coverage report from container
+        if: always()
+        run: |
+          cd license_server
+          docker compose -f docker-compose.dev.yaml cp app:/app/coverage.xml ./coverage.xml || true
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -127,23 +126,8 @@ jobs:
           path: license_server/coverage.xml
           retention-days: 7
 
-  docker-build:
-    name: Docker Build Check
-    runs-on: ubuntu-latest
-    needs: [lint, test-server]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./license_server
-          push: false
-          load: true
-          tags: license-server:ci-test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          
+      - name: Down Docker Compose
+        if: always()
+        run: |
+          cd license_server
+          docker compose -f docker-compose.dev.yaml down -v
