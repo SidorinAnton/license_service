@@ -102,3 +102,5 @@ docker-migrate:
 docker-migrate-rollback:
 	docker exec -it license_app uv run alembic downgrade -1
 
+docker-run-tests:
+	docker exec -it license_app uv run pytest -v
