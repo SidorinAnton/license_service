@@ -1,10 +1,10 @@
-from pydantic import BaseModel, field_validator
+from pydantic import Base64Bytes, BaseModel, field_validator
 
 
 class EncryptedActivationRequest(BaseModel):
-    encrypted_sync_key: str
-    nonce: str
-    cipher_data: str
+    encrypted_sync_key: Base64Bytes
+    nonce: Base64Bytes
+    cipher_data: Base64Bytes
 
 
 class DeviceDataSchema(BaseModel):

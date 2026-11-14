@@ -1,3 +1,4 @@
+import base64
 import time
 
 import pytest
@@ -22,21 +23,30 @@ def get_device_data(license_key, machine_id="machine-1") -> DeviceDataSchema:
 
 
 def test_activate_endpoint_success(client, sample_license):
-    encrypted_request_body = encrypt_test_payload(sample_license.key)
+    data = encrypt_test_payload(sample_license.key)
+    payload = {
+        "encrypted_sync_key": base64.b64encode(data["encrypted_sync_key"]).decode("utf-8"),
+        "nonce": base64.b64encode(data["nonce"]).decode("utf-8"),
+        "cipher_data": base64.b64encode(data["cipher_data"]).decode("utf-8"),
+    }
 
-    response = client.post("/api/v1/client/activate", json=encrypted_request_body)
+    response = client.post("/api/v1/client/activate", json=payload)
 
     assert response.status_code == 200
     assert response.json() == {"status": "success", "message": "License successfully activated on this device"}
 
 
 def test_activate_endpoint_invalid_key_format(client):
-    encrypted_request_body = encrypt_test_payload("aaa-111-")
+    data = encrypt_test_payload("aaa-111-")
+    payload = {
+        "encrypted_sync_key": base64.b64encode(data["encrypted_sync_key"]).decode("utf-8"),
+        "nonce": base64.b64encode(data["nonce"]).decode("utf-8"),
+        "cipher_data": base64.b64encode(data["cipher_data"]).decode("utf-8"),
+    }
 
-    with pytest.raises(ValueError):
-        response = client.post("/api/v1/client/activate", json=encrypted_request_body)
-        assert response.status_code == 400
-        assert "Invalid license key format" in response.json()["detail"]
+    response = client.post("/api/v1/client/activate", json=payload)
+    assert response.status_code == 400
+    assert "Invalid license key format" in response.json()["detail"]
 
 
 def test_activate_license_success(db_session, sample_license):

@@ -16,11 +16,7 @@ def load_private_key() -> bytes:
         return f.read()
 
 
-def decrypt_payload(encrypted_key_b64: str, nonce_b64: str, cipher_data_b64: str) -> dict:
-    encrypted_key = base64.b64decode(encrypted_key_b64)
-    nonce = base64.b64decode(nonce_b64)
-    cipher_data = base64.b64decode(cipher_data_b64)
-
+def decrypt_payload(encrypted_key: bytes, nonce: bytes, cipher_data: bytes) -> dict:
     private_key_pem = load_private_key()
     private_key = load_pem_private_key(private_key_pem, password=None)
 

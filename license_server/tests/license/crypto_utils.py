@@ -20,7 +20,7 @@ def encrypt_test_payload(
     cpu_arch="bbb",
     cpu_cores=8,
     mac_address="ccc",
-) -> dict:
+) -> dict[str, bytes]:
     raw_payload = {
         "license_key": license_key,
         "machine_id": machine_id,
@@ -53,7 +53,7 @@ def encrypt_test_payload(
         ),
     )
     return {
-        "encrypted_sync_key": base64.b64encode(encrypted_sync_key).decode("utf-8"),
-        "nonce": base64.b64encode(nonce).decode("utf-8"),
-        "cipher_data": base64.b64encode(cipher_data).decode("utf-8"),
+        "encrypted_sync_key": encrypted_sync_key,
+        "nonce": nonce,
+        "cipher_data": cipher_data,
     }
