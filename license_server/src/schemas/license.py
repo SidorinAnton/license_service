@@ -20,7 +20,7 @@ class DeviceDataSchema(BaseModel):
 
     @field_validator("license_key")
     @classmethod
-    def case_insensitive_license_format(cls, v: str) -> str:
+    def normalize(cls, v: str) -> str:
         err_msg = "Invalid license key format. Expected format: XXXX-XXXX-XXXX-XXXX"
 
         parts = v.split("-")
@@ -29,7 +29,7 @@ class DeviceDataSchema(BaseModel):
         for part in parts:
             if len(part) != 4 or not part.isalnum():
                 raise ValueError(err_msg)
-        return v
+        return v.upper()
 
 
 class ActivationResponse(BaseModel):
