@@ -519,7 +519,7 @@ wheels = [
 [[package]]
 name = "license-server"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "alembic" },
     { name = "cryptography" },
