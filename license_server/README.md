@@ -127,12 +127,7 @@ uv run uvicorn src.main:app --reload --port 8000
 make docker-up
 ```
 
-### 4. Документация API
-
-После запуска сервера интерактивная документация Swagger UI доступна по адресу:  
-👉 [http://localhost:8000/docs](http://localhost:8000/docs)
-
-### 5. Работа с базой данных
+### 4. Работа с базой данных
 
 Из корня:
 
