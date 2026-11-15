@@ -110,7 +110,7 @@ jobs:
       - name: Run tests inside Docker container
         run: |
           cd license_server
-          docker compose -f docker-compose.dev.yaml exec -T app uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -v
+          docker compose -f docker-compose.dev.yaml exec -T -e PYTHONPATH=. app uv run pytest --cov=src --cov-report=xml --cov-report=term-missing -v
 
       - name: Copy coverage report from container
         if: always()
