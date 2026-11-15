@@ -60,6 +60,9 @@ migrate-rollback:
 # ==========================================
 # RUN
 # ==========================================
+start-db:
+	cd license_server && docker-compose -f docker-compose.dev.yaml up -d postgres
+
 install-client:
 	cd license_client && uv pip install -e .
 	cd license_client && uv tool install .
