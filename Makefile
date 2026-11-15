@@ -74,7 +74,7 @@ endif
 
 run-client:
 	$(eval CLIENT_KEY := $(or $(word 1,$(RUN_ARGS)),ABCD-1234-EFGH-5678))
-	cd license_client && PYTHONPATH=. uv run python src/main.py $(CLIENT_KEY) http://localhost:8000/api/v1/client/activate
+	cd license_client && PYTHONPATH=. uv run python src/main.py $(CLIENT_KEY) http://localhost:8000/api/v1/client/activations
 
 run-server:
 	cd license_server && PYTHONPATH=. uv run uvicorn src.main:app --reload --port 8000

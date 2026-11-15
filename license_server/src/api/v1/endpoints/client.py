@@ -9,7 +9,7 @@ from src.services.license import activate_device_service
 router = APIRouter(prefix="/client", tags=["Client API"])
 
 
-@router.post("/activate", response_model=ActivationResponse)
+@router.post("/activations", response_model=ActivationResponse)
 def activate_license(
     device_data: DeviceDataSchema = Depends(get_verified_activation_data),
     db: Session = Depends(get_db),

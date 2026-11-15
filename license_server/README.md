@@ -2,7 +2,7 @@
 
 Бекенд сервиса активации лицензий.
 
-Принимает `POST` запрос на `https://<domain>:8000/api/v1/client/activate`.
+Принимает `POST` запрос на `https://<domain>:8000/api/v1/client/activations`.
 
 Данные:
 

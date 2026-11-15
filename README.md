@@ -11,7 +11,7 @@
 
 1. Заранее генерируем публичный и приватный ключ -- на клиенте публичный, на сервере -- приватный
 2. Запускаем клиента на устройстве
-   `PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 https://server:8000/api/v1/client/activate`
+   `PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 https://server:8000/api/v1/client/activations`
 3. Скрипт собирает информацию об устройстве:
     - **os_system** -- какая ОС (линукс, винда ...)
     - **os_release** -- сборка ОС (6.8.0-147-generic)
@@ -26,7 +26,7 @@
    Изменение любого бита приведет к невозможности расшифровки
 5. Из п.0 на клиенте у нас есть публичный ключ. Им мы шифруем сгенерированный в п.3 симметричный ключ.
    В результате на сервер идет запрос вида `pub(aes-gcm-key) + nonce + данные из п.3`
-6. На сервере запрос приходит в апишку `/api/v1/client/activate`. Там происходит расшифровка ключа и данных
+6. На сервере запрос приходит в апишку `/api/v1/client/activations`. Там происходит расшифровка ключа и данных
 7. После проверки лицензии, если ключ и данные успешно добавились, в ответ возвращается успешный статус
 
 ## Структура проекта
@@ -118,7 +118,7 @@ pre-commit install
 **Клиент**:
 
 - можно запустить через uv:
-  `cd license_client && PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 http://localhost:8000/api/v1/client/activate`
+  `cd license_client && PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 http://localhost:8000/api/v1/client/activations`
 - оно же `make run-client`
 - можно через uv установить, а потом запустить: `make install-client`
 
