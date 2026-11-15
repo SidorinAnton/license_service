@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from src.core.database import Base
@@ -23,8 +23,9 @@ class ActivationModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     license_id = Column(Integer, ForeignKey("licenses.id"), nullable=False)
+    fingerprint = Column(String, index=True, nullable=False)
 
-    machine_id = Column(String, index=True, nullable=False)
+    machine_id = Column(String, nullable=False)
     os_system = Column(String, nullable=True)
     os_release = Column(String, nullable=True)
     os_version = Column(String, nullable=True)
@@ -35,3 +36,5 @@ class ActivationModel(Base):
     activated_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
 
     license = relationship("LicenseModel", back_populates="activations")
+
+    __table_args__ = (UniqueConstraint("license_id", "fingerprint", name="uq_license_fingerprint"),)

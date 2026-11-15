@@ -2,20 +2,44 @@ import base64
 import time
 
 from src.models.license import ActivationModel
+from src.schemas.license import DeviceDataSchema
+from src.services.license import generate_device_fingerprint
 from tests.license.crypto_utils import build_http_payload, encrypt_test_payload
 
 
 def test_activate_endpoint_success(client, db_session, sample_license):
-    data = encrypt_test_payload(sample_license.key, machine_id="lolkek")
+    data = encrypt_test_payload(
+        license_key=sample_license.key,
+        machine_id="aaa",
+        os_system="bbb",
+        os_release="ccc",
+        os_version="ddd",
+        cpu_arch="eee",
+        cpu_cores=8,
+        mac_address="fff",
+    )
 
     response = client.post("/api/v1/client/activate", json=build_http_payload(data))
 
     assert response.status_code == 200
     assert response.json() == {"status": "success", "message": "License successfully activated on this device"}
 
-    act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id, machine_id="lolkek").one()
+    act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id, machine_id="aaa").one()
     assert act.license_id == sample_license.id
-    assert act.machine_id == "lolkek"
+    assert act.machine_id == "aaa"
+    assert act.fingerprint == generate_device_fingerprint(
+        DeviceDataSchema(
+            license_key=sample_license.key,
+            machine_id="aaa",
+            os_system="bbb",
+            os_release="ccc",
+            os_version="ddd",
+            cpu_arch="eee",
+            cpu_cores=8,
+            mac_address="fff",
+            timestamp=int(time.time()),
+        )
+    )
 
 
 def test_activate_endpoint_idempotent(client, db_session, sample_license):

@@ -10,7 +10,7 @@ from src.core.exceptions import (
 )
 from src.models.license import ActivationModel
 from src.schemas.license import DeviceDataSchema
-from src.services.license import activate_device_service
+from src.services.license import activate_device_service, generate_device_fingerprint
 from tests.license.factories import LicenseFactory
 
 
@@ -83,9 +83,7 @@ def test_activate_license_limit_exceeded(db_session, sample_license):
         activate_device_service(db=db_session, device_data=device_data_2)
 
 
-def test_activate_different_licenses_same_machine(
-    db_session,
-):
+def test_activate_different_licenses_same_machine(db_session):
     LicenseFactory._meta.sqlalchemy_session = db_session
     license_1 = LicenseFactory(key="AAAA-AAAA-AAAA-AAAA")
     license_2 = LicenseFactory(key="BBBB-BBBB-BBBB-BBBB")
@@ -100,3 +98,16 @@ def test_activate_different_licenses_same_machine(
 
     assert len(activations) == 2
     assert {act.license.key for act in activations} == {"AAAA-AAAA-AAAA-AAAA", "BBBB-BBBB-BBBB-BBBB"}
+
+
+def test_generate_device_fingerprint_consistency():
+    device_data_1 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-A")
+    device_data_2 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-A")
+    device_data_3 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-B")
+
+    fp_1 = generate_device_fingerprint(device_data_1)
+    fp_2 = generate_device_fingerprint(device_data_2)
+    fp_3 = generate_device_fingerprint(device_data_3)
+
+    assert fp_1 == fp_2
+    assert fp_1 != fp_3

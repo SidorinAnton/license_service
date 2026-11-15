@@ -1,8 +1,11 @@
+import hashlib
 import time
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from src.core.config import settings
 from src.core.exceptions import (
     LicenseAlreadyActivatedError,
     LicenseExpiredError,
@@ -14,6 +17,15 @@ from src.models.license import ActivationModel, LicenseModel
 from src.schemas.license import DeviceDataSchema
 
 TIMESTAMP_TTL = 300
+
+
+def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
+    raw_str = (
+        f"{device_data.machine_id}-{device_data.os_system or ''}-{device_data.os_release or ''}-"
+        f"{device_data.os_version or ''}-{device_data.cpu_arch or ''}-{device_data.cpu_cores or ''}-"
+        f"{device_data.mac_address or ''}-{settings.LICENSE_SALT}"
+    )
+    return hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
 
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
@@ -31,15 +43,17 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     if license_obj.expires_at and license_obj.expires_at < datetime.now():
         raise LicenseExpiredError("License key has expired")
 
+    fingerprint = generate_device_fingerprint(device_data)
     existing_activation = db.query(ActivationModel).filter(ActivationModel.license_id == license_obj.id).first()
 
     if existing_activation:
-        if existing_activation.machine_id == device_data.machine_id:
+        if existing_activation.fingerprint == fingerprint:
             return {"status": "already_activated", "message": "Device is already registered for this license"}
         raise LicenseAlreadyActivatedError("License is already used")
 
     new_activation = ActivationModel(
         license_id=license_obj.id,
+        fingerprint=fingerprint,
         machine_id=device_data.machine_id,
         os_system=device_data.os_system,
         os_release=device_data.os_release,
@@ -50,7 +64,12 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     )
 
     db.add(new_activation)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return {"status": "already_activated", "message": "Device is already registered for this license"}
 
     return {
         "status": "success",

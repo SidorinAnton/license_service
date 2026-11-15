@@ -26,6 +26,7 @@ class ActivationFactory(SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     license = factory.SubFactory(LicenseFactory)
+    fingerprint = factory.Faker("sha256")
     machine_id = factory.Faker("uuid4")
     os_system = "Linux"
     cpu_cores = 8

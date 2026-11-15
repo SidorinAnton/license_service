@@ -9,11 +9,11 @@ class EncryptedActivationRequest(BaseModel):
 
 class DeviceDataSchema(BaseModel):
     license_key: str
-    os_system: str
-    os_release: str
-    os_version: str
-    cpu_arch: str
-    cpu_cores: int
+    os_system: str | None = None
+    os_release: str | None = None
+    os_version: str | None = None
+    cpu_arch: str | None = None
+    cpu_cores: int | None = None
     mac_address: str | None = None
     machine_id: str
     timestamp: int
