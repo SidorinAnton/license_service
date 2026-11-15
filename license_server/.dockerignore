@@ -5,3 +5,5 @@ __pycache__
 docker-compose.yaml
 docker-compose.dev.yaml
 .venv
+.env
+config
