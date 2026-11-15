@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import time
 from datetime import datetime
 
@@ -16,6 +17,8 @@ from src.core.exceptions import (
 from src.models.license import ActivationModel, LicenseModel
 from src.schemas.license import DeviceDataSchema
 
+logger = logging.getLogger(__name__)
+
 TIMESTAMP_TTL = 300
 
 
@@ -29,18 +32,27 @@ def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
 
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
+    logger.info(
+        "Processing activation request for license: %s -- (machine_id: %s)",
+        device_data.license_key,
+        device_data.machine_id
+    )
+
     if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:
         raise TimestampExpiredError("Payload expired or invalid timestamp")
 
     license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).first()
 
     if license_obj is None:
+        logger.warning("License key %s not found in database", device_data.license_key)
         raise LicenseNotFoundError("License key not found")
 
     if not license_obj.is_active:
+        logger.warning("Attempt to activate inactive license ID: %s", license_obj.id)
         raise LicenseInactiveError("License key is deactivated")
 
     if license_obj.expires_at and license_obj.expires_at < datetime.now():
+        logger.warning("Attempt to activate expired license ID: %s", license_obj.id)
         raise LicenseExpiredError("License key has expired")
 
     fingerprint = generate_device_fingerprint(device_data)
@@ -48,7 +60,10 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
 
     if existing_activation:
         if existing_activation.fingerprint == fingerprint:
+            logger.info("Idempotent activation: device already registered for license ID: %s", license_obj.id)
             return {"status": "already_activated", "message": "Device is already registered for this license"}
+
+        logger.warning("Activation conflict: license ID %s is already used by another device", license_obj.id)
         raise LicenseAlreadyActivatedError("License is already used")
 
     new_activation = ActivationModel(
@@ -69,8 +84,10 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         db.commit()
     except IntegrityError:
         db.rollback()
+        logger.info("IntegrityError caught (race condition handled) for license ID: %s", license_obj.id)
         return {"status": "already_activated", "message": "Device is already registered for this license"}
 
+    logger.info("Successfully activated license ID %s for fingerprint prefix: %s...", license_obj.id, fingerprint[:8])
     return {
         "status": "success",
         "message": "License successfully activated on this device",

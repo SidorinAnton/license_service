@@ -5,13 +5,18 @@ import re
 class SecureFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        def mask_license(match: re.Match) -> str:
+            val = match.group(0)
+            return f"{val[:2]}**-****-****-**{val[-2:]}"
+
         self.patterns = [
             (re.compile(r'(password|secret|key|token)=["\']?([^"\'\s]+)["\']?', re.IGNORECASE), r"\1=***REDACTED***"),
             (
                 re.compile(r"-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+PRIVATE KEY-----"),
                 "***PRIVATE_KEY_REDACTED***",
             ),
-            (re.compile(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\b"), "****-****-****-****"),
+            (re.compile(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\b"), mask_license),
         ]
 
     def format(self, record: logging.LogRecord) -> str:
