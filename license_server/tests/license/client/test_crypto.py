@@ -83,6 +83,15 @@ def test_decrypt_payload_wrong_nonce_length():
             cipher_data=data["cipher_data"],
         )
 
+def test_decrypt_payload_another_nonce():
+    data = encrypt_test_payload("1111-1111-1111-1111")
+    with pytest.raises(DecryptionError, match="Invalid tag or corrupted payload"):
+        decrypt_payload(
+            encrypted_key=data["encrypted_sync_key"],
+            nonce=os.urandom(12),
+            cipher_data=data["cipher_data"],
+        )
+
 
 def test_decrypt_payload_wrong_private_key():
     other_private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
