@@ -3,9 +3,9 @@
 # ==========================================
 # Generate RSA (private -> server, public -> client)
 generate-keys:
-	@mkdir -p license_server/config license_client/config
+	@mkdir -p license_server/config license_client/src/config
 	openssl genrsa -out license_server/config/private_key.pem 2048
-	openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/config/public_key.pem
+	openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/src/config/public_key.pem
 
 encrypt:
 	ansible-vault encrypt license_server/config/private_key.pem

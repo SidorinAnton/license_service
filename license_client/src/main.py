@@ -1,5 +1,7 @@
 import argparse
+import importlib.resources
 import json
+import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -11,12 +13,25 @@ from src.crypto import encrypt_payload, is_license_key_valid
 __version__ = "1.0.0"
 
 
-def load_public_key() -> str:
-    key_path = Path(__file__).parent.parent / "config" / "public_key.pem"
-    if not key_path.exists():
-        print(f"Error: Public key not found at {key_path}. Did you run 'make keys'?", file=sys.stderr)
-        sys.exit(1)
-    return key_path.read_text(encoding="utf-8")
+def load_public_key(custom_path: str | None = None) -> str:
+    key_path_str = custom_path or os.getenv("LICENSE_PUBLIC_KEY_PATH")
+    if key_path_str:
+        key_path = Path(key_path_str)
+        if not key_path.exists():
+            print(f"Error: Public key not found at specified path: {key_path}", file=sys.stderr)
+            sys.exit(1)
+        return key_path.read_text(encoding="utf-8")
+
+    ref = importlib.resources.files("src").joinpath("config/public_key.pem")
+    if ref.is_file():
+        return ref.read_text(encoding="utf-8")
+
+    print(
+        "Error: Public key not found. Please provide it via --public-key option "
+        "or set LICENSE_PUBLIC_KEY_PATH environment variable.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,6 +42,13 @@ def build_parser() -> argparse.ArgumentParser:
         "-d",
         action="store_true",
         help="Perform a dry run: collect data, encrypt it and print payload without sending it to the server",
+    )
+    parser.add_argument(
+        "--public-key",
+        "-k",
+        type=str,
+        default=None,
+        help="Path to custom public RSA key (.pem)",
     )
     parser.add_argument("license_key", help="License number in the format XXXX-XXXX-XXXX-XXXX")
     parser.add_argument("server", help="License server URL (ex: https://localhost:8000)")
@@ -45,7 +67,7 @@ def main():
         sys.exit(1)
 
     device_data = get_device_data(args.license_key)
-    public_key_pem = load_public_key()
+    public_key_pem = load_public_key(args.public_key)
     payload = encrypt_payload(device_data, public_key_pem)
 
     if args.dry_run:
