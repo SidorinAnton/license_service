@@ -1,6 +1,11 @@
+import concurrent.futures
+import threading
 import time
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
 
 from src.core.exceptions import (
     LicenseActivationLimitReachedError,
@@ -9,7 +14,7 @@ from src.core.exceptions import (
     LicenseInactiveError,
     LicenseNotFoundError,
 )
-from src.models.license import ActivationModel
+from src.models.license import ActivationModel, LicenseModel
 from src.schemas.license import DeviceDataSchema
 from src.services.license import activate_device_service, generate_device_fingerprint
 from tests.license.factories import LicenseFactory
@@ -146,6 +151,127 @@ def test_generate_device_fingerprint_consistency():
     assert fp_1 != fp_3
 
 
-def test_integrity_error_not_in_unique_key_fingerprint(db_session, sample_license):
-    data = get_device_data(sample_license.key, machine_id="")
-    data.machine_id = None
+def test_integrity_error_not_in_unique_key_fingerprint(setup_database):
+    Session = sessionmaker(bind=setup_database, autocommit=False, autoflush=False)
+    with Session() as session:
+        lic = LicenseModel(
+            key="XXXX-XXXX-XXXX-E4C2",
+            is_active=True,
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+            max_activations=1,
+        )
+        session.add(lic)
+        session.commit()
+        license_key = lic.key
+
+    data = get_device_data(license_key, machine_id="")
+    data.os_system = None
+
+    with Session() as session, pytest.raises(IntegrityError):
+        activate_device_service(db=session, device_data=data)
+
+
+def test_concurrent_race_activation_different_device(setup_database):
+    n = 50
+    Session = sessionmaker(bind=setup_database, autocommit=False, autoflush=False)
+    barrier = threading.Barrier(n)
+
+    with Session() as session:
+        lic = LicenseModel(
+            key="XXXX-XXXX-YYYY-E847",
+            is_active=True,
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+            max_activations=1,
+        )
+        session.add(lic)
+        session.commit()
+        license_id = lic.id
+        license_key = lic.key
+
+    def worker(i: int) -> tuple[str, int]:
+        data = DeviceDataSchema(
+            license_key=license_key,
+            machine_id=f"race-{i}",
+            disk_serial_number="aaa",
+            os_system="Linux",
+            os_release="",
+            os_version="",
+            cpu_arch="",
+            cpu_cores=8,
+            mac_address="",
+            timestamp=int(time.time()),
+        )
+
+        with Session() as session:
+            barrier.wait(timeout=5)
+            try:
+                activate_device_service(db=session, device_data=data)
+                return "ok", i
+            except LicenseActivationLimitReachedError:
+                session.rollback()
+                return "limit", i
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n) as pool:
+        results = list(pool.map(worker, range(n)))
+
+    with Session() as session:
+        count = session.query(ActivationModel).filter_by(license_id=license_id).count()
+
+    ok = [r for r in results if r[0] == "ok"]
+    limited = [r for r in results if r[0] == "limit"]
+    assert len(ok) == 1, f"expected exactly 1 success, got {results}"
+    assert len(limited) == n - 1
+    assert count == 1
+
+
+def test_concurrent_race_activation_same_device(setup_database):
+    n = 50
+    Session = sessionmaker(bind=setup_database, autocommit=False, autoflush=False)
+    barrier = threading.Barrier(n)
+
+    with Session() as session:
+        lic = LicenseModel(
+            key="XXXX-YYYY-YYYY-1978",
+            is_active=True,
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+            max_activations=1,
+        )
+        session.add(lic)
+        session.commit()
+        license_id = lic.id
+        license_key = lic.key
+
+    def worker(i: int) -> tuple[str, int]:
+        data = DeviceDataSchema(
+            license_key=license_key,
+            machine_id="race",
+            disk_serial_number="aaa",
+            os_system="Linux",
+            os_release="",
+            os_version="",
+            cpu_arch="",
+            cpu_cores=8,
+            mac_address="",
+            timestamp=int(time.time()),
+        )
+
+        with Session() as session:
+            barrier.wait(timeout=5)
+            try:
+                activate_device_service(db=session, device_data=data)
+                return "ok", i
+            except LicenseAlreadyActivatedError:
+                session.rollback()
+                return "limit", i
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n) as pool:
+        results = list(pool.map(worker, range(n)))
+
+    with Session() as session:
+        count = session.query(ActivationModel).filter_by(license_id=license_id).count()
+
+    ok = [r for r in results if r[0] == "ok"]
+    limited = [r for r in results if r[0] == "limit"]
+    assert len(ok) == 1, f"expected exactly 1 success, got {results}"
+    assert len(limited) == n - 1
+    assert count == 1
