@@ -21,6 +21,16 @@ class Device:
 
 
 def get_device_data(license_key: str) -> Device:
+    try:
+        mac_address = get_mac_address()
+    except:  # noqa E722
+        mac_address = None
+
+    try:
+        machine_id = machineid.id()
+    except:  # noqa E722
+        machine_id = None
+
     return Device(
         license_key=license_key,
         os_system=platform.system(),
@@ -28,8 +38,8 @@ def get_device_data(license_key: str) -> Device:
         os_version=platform.version(),
         cpu_arch=platform.machine(),
         cpu_cores=os.cpu_count() or 0,
-        mac_address=get_mac_address(),
-        machine_id=machineid.id(),
+        mac_address=mac_address,
+        machine_id=machine_id,
         disk_serial_number=_disk_serial(),
     )
 
