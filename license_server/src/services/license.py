@@ -35,7 +35,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     logger.info(
         "Processing activation request for license: %s -- (machine_id: %s)",
         device_data.license_key,
-        device_data.machine_id
+        device_data.machine_id,
     )
 
     if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:

@@ -36,13 +36,11 @@ def test_send_activation_http_error(mocker):
     mock_response.raise_for_status.side_effect = http_error
     mock_post.return_value = mock_response
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match="Server error"):
         send_activation(
             "http://localhost:8000/api/v1/activate",
             EncryptedPayload(encrypted_sync_key="key", nonce="nonce", cipher_data="data"),
         )
-
-        assert "Server error (400)" in str(exc_info.value)
 
 
 def test_send_activation_network_error(mocker):
@@ -50,11 +48,8 @@ def test_send_activation_network_error(mocker):
 
     mock_post.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match="Network error"):
         send_activation(
             "http://localhost:8000/api/v1/activate",
             EncryptedPayload(encrypted_sync_key="key", nonce="nonce", cipher_data="data"),
         )
-
-        assert "Network error" in str(exc_info.value)
-        assert "Connection refused" in str(exc_info.value)

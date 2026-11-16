@@ -1,8 +1,21 @@
+import random
+import string
+import zlib
 from datetime import datetime, timedelta
 
 import factory
 
 from src.models.license import ActivationModel, LicenseModel
+
+
+def generate_valid_license_key() -> str:
+    parts = ["".join(random.choices(string.ascii_uppercase + string.digits, k=4)).upper() for _ in range(3)]
+
+    crc = zlib.crc32("".join(parts).encode("utf-8")) & 0xFFFF
+    checksum = f"{crc:04X}"
+
+    parts.append(checksum)
+    return "-".join(parts)
 
 
 class SQLAlchemyModelFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -15,7 +28,7 @@ class LicenseFactory(SQLAlchemyModelFactory):
         model = LicenseModel
         sqlalchemy_session_persistence = "commit"
 
-    key = factory.Faker("bothify", text="????-????-????-????", letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+    key = factory.LazyFunction(generate_valid_license_key)
     is_active = True
     expires_at = factory.LazyFunction(lambda: datetime.now() + timedelta(days=30))
 

@@ -3,6 +3,7 @@ import logging
 
 from src.core.database import SessionLocal
 from src.models.license import LicenseModel
+from src.services.crypto import calculate_checksum
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,7 +15,12 @@ def generate_licenses():
         created_count = 0
 
         for i in range(1, 11):
-            key = f"TEST-2026-KKEY-{i:04d}"
+            part1 = "TEST"
+            part2 = "2026"
+            part3 = f"KY{i:02d}"
+
+            checksum = calculate_checksum([part1, part2, part3])
+            key = f"{part1}-{part2}-{part3}-{checksum}"
 
             existing_license = db.query(LicenseModel).filter_by(key=key).first()
             if existing_license:

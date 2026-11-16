@@ -6,19 +6,9 @@ from pathlib import Path
 
 from src.api import send_activation
 from src.collect import get_device_data
-from src.crypto import encrypt_payload
+from src.crypto import encrypt_payload, is_license_key_valid
 
 __version__ = "1.0.0"
-
-
-def is_license_key_valid(license_key: str) -> bool:
-    parts = license_key.split("-")
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if len(part) != 4 or not part.isalnum():
-            return False
-    return True
 
 
 def load_public_key() -> str:

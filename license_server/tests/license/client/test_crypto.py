@@ -68,14 +68,14 @@ def test_decrypt_payload_invalid_tag_or_corrupted():
     ],
 )
 def test_decrypt_payload_invalid_fields(bad_field, expected_msg):
-    data = encrypt_test_payload("1111-1111-1111-1111")
+    data = encrypt_test_payload("1111-1111-1111-BA9F")
     data[bad_field] = b"!@#$ not base64"
     with pytest.raises(DecryptionError, match=expected_msg):
         decrypt_payload(encrypted_key=data["encrypted_sync_key"], nonce=data["nonce"], cipher_data=data["cipher_data"])
 
 
 def test_decrypt_payload_wrong_nonce_length():
-    data = encrypt_test_payload("1111-1111-1111-1111")
+    data = encrypt_test_payload("1111-1111-1111-BA9F")
     with pytest.raises(DecryptionError, match="Failed to decrypt payload"):
         decrypt_payload(
             encrypted_key=data["encrypted_sync_key"],
@@ -83,8 +83,9 @@ def test_decrypt_payload_wrong_nonce_length():
             cipher_data=data["cipher_data"],
         )
 
+
 def test_decrypt_payload_another_nonce():
-    data = encrypt_test_payload("1111-1111-1111-1111")
+    data = encrypt_test_payload("1111-1111-1111-BA9F")
     with pytest.raises(DecryptionError, match="Invalid tag or corrupted payload"):
         decrypt_payload(
             encrypted_key=data["encrypted_sync_key"],

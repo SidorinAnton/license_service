@@ -3,20 +3,24 @@ import sys
 
 import pytest
 
-from src.main import is_license_key_valid, load_public_key
+from src.crypto import calculate_checksum, is_license_key_valid
+from src.main import load_public_key
 
 
 @pytest.mark.parametrize(
     "key, expected",
     [
-        ("ABCD-1234-EFGH-5678", True),
-        ("1234-ABCD-5678-WXYZ", True),
-        ("abcd-1234-efgh-5678", True),
+        ("ABCD-1234-EFGH-5678", False),
+        ("1234-ABCD-5678-WXYZ", False),
+        ("abcd-1234-efgh-5678", False),
         ("ABC-1234-EFGH-5678", False),
         ("ABCD-123-EFGH-5678", False),
         ("ABCD-1234-EFGH-5678-9999", False),
         ("ABCD-1234-EFGH-567!", False),
         ("", False),
+        (f"ABCD-1234-EFGH-{calculate_checksum(['ABCD1234EFGH'])}", True),
+        (f"1234-ABCD-5678-{calculate_checksum(['1234ABCD5678'])}", True),
+        (f"abcd-1234-efgh-{calculate_checksum(['abcd1234efgh'])}", True),
     ],
 )
 def test_license_key_validation(key, expected):
@@ -29,7 +33,7 @@ def test_load_public_key():
 
 def test_cli_success():
     result = subprocess.run(
-        [sys.executable, "src/main.py", "-d", "ABCD-1234-EFGH-5678", "http://localhost:8000"],
+        [sys.executable, "src/main.py", "-d", "ABCD-1234-EFGH-B6B6", "http://localhost:8000"],
         capture_output=True,
         text=True,
         check=False,
@@ -66,7 +70,7 @@ def test_real_cli_invalid_key():
 
 def test_real_cli_invalid_server():
     result = subprocess.run(
-        [sys.executable, "src/main.py", "ABCD-1234-EFGH-5678", "lolkek"],
+        [sys.executable, "src/main.py", "ABCD-1234-EFGH-B6B6", "lolkek"],
         capture_output=True,
         text=True,
         check=False,

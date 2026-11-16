@@ -13,7 +13,7 @@ def license_factory(db_session):
 
 @pytest.fixture
 def sample_license(license_factory):
-    return LicenseFactory(key="TEST-1234-ABCD-5678")
+    return LicenseFactory(key="TEST-1234-ABCD-4CE4")
 
 
 @pytest.fixture

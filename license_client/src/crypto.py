@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import time
+import zlib
 from dataclasses import asdict, dataclass
 
 from cryptography.hazmat.primitives import hashes
@@ -52,3 +53,30 @@ def encrypt_payload(data: Device, public_key_pem: str) -> EncryptedPayload:
         nonce=base64.b64encode(nonce).decode("utf-8"),
         cipher_data=base64.b64encode(cipher_data).decode("utf-8"),
     )
+
+
+def calculate_checksum(parts: list[str]) -> str:
+    base_str = "".join(parts[:3]).upper()
+    # 1) calculate 32-bit checksum
+    # 2) 0xFFFF -- 16-bit mask (0b1111_1111_1111_1111)
+    # 3) crc & ffff = 16-bit crc
+    crc = zlib.crc32(base_str.encode("utf-8")) & 0xFFFF
+    # 4) 04X -- make crc in HEX (16-sys) and get 4 symbols
+    return f"{crc:04X}"
+
+
+def is_license_key_valid(license_key: str) -> bool:
+    parts = license_key.split("-")
+    if len(parts) != 4:
+        return False
+    for part in parts:
+        if len(part) != 4 or not part.isalnum():
+            return False
+
+    try:
+        int(parts[3], 16)
+    except ValueError:
+        return False
+
+    expected_checksum = calculate_checksum(parts)
+    return parts[3].upper() == expected_checksum

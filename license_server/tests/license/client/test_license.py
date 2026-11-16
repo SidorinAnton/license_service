@@ -58,7 +58,7 @@ def test_activate_license_same_key_and_device(db_session, sample_license):
 
 
 def test_activate_license_not_found(db_session):
-    device_data = get_device_data("1111-1111-1111-1111")
+    device_data = get_device_data("1111-1111-1111-BA9F")
     with pytest.raises(LicenseNotFoundError, match="License key not found"):
         activate_device_service(db=db_session, device_data=device_data)
 
@@ -85,8 +85,8 @@ def test_activate_license_limit_exceeded(db_session, sample_license):
 
 def test_activate_different_licenses_same_machine(db_session):
     LicenseFactory._meta.sqlalchemy_session = db_session
-    license_1 = LicenseFactory(key="AAAA-AAAA-AAAA-AAAA")
-    license_2 = LicenseFactory(key="BBBB-BBBB-BBBB-BBBB")
+    license_1 = LicenseFactory(key="AAAA-AAAA-AAAA-4366")
+    license_2 = LicenseFactory(key="BBBB-BBBB-BBBB-769F")
 
     result_1 = activate_device_service(db=db_session, device_data=get_device_data(license_1.key, machine_id="id"))
     result_2 = activate_device_service(db=db_session, device_data=get_device_data(license_2.key, machine_id="id"))
@@ -97,13 +97,13 @@ def test_activate_different_licenses_same_machine(db_session):
     activations = db_session.query(ActivationModel).filter_by(machine_id="id").all()
 
     assert len(activations) == 2
-    assert {act.license.key for act in activations} == {"AAAA-AAAA-AAAA-AAAA", "BBBB-BBBB-BBBB-BBBB"}
+    assert {act.license.key for act in activations} == {"AAAA-AAAA-AAAA-4366", "BBBB-BBBB-BBBB-769F"}
 
 
 def test_generate_device_fingerprint_consistency():
-    device_data_1 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-A")
-    device_data_2 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-A")
-    device_data_3 = get_device_data("XXXX-XXXX-XXXX-XXXX", machine_id="machine-B")
+    device_data_1 = get_device_data("XXXX-XXXX-XXXX-E4C2", machine_id="machine-A")
+    device_data_2 = get_device_data("XXXX-XXXX-XXXX-E4C2", machine_id="machine-A")
+    device_data_3 = get_device_data("XXXX-XXXX-XXXX-E4C2", machine_id="machine-B")
 
     fp_1 = generate_device_fingerprint(device_data_1)
     fp_2 = generate_device_fingerprint(device_data_2)

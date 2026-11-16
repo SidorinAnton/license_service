@@ -122,7 +122,7 @@ def test_activate_endpoint_empty(client):
 
 
 def test_activate_endpoint_license_not_found(client):
-    data = encrypt_test_payload("1111-1111-1111-1111")
+    data = encrypt_test_payload("1111-1111-1111-BA9F")
     request = client.post("/api/v1/client/activations", json=build_http_payload(data))
     assert request.status_code == 404
     assert request.json() == {"detail": "License key not found"}

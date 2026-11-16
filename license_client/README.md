@@ -20,7 +20,7 @@ CLI-скрипт:
 
 ```json
 {
-  "license_key": "ABCD-1234-EFGH-5678",
+  "license_key": "ABCD-1234-EFGH-B6B6",
   "os_system": "Linux",
   "os_release": "6.8.0-147-generic",
   "os_version": "#147-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep 24 11:33:16 UTC 2026",
@@ -88,13 +88,13 @@ make generate-keys
 Полезно для отладки и проверки того, какие именно данные будут отправлены
 
 ```shell
-PYTHONPATH=. uv run python src/main.py --dry-run ABCD-1234-EFGH-5678 http://localhost:8000/api/v1/client/activations
+PYTHONPATH=. uv run python src/main.py --dry-run ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
 ```
 
 **Полноценная активация:**
 
 ```shell
-PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-5678 http://localhost:8000/api/v1/client/activations
+PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
 ```
 
 *(Альтернативно, из корня проекта можно использовать: `make run-client <LICENSE_KEY>`)*

@@ -1,5 +1,7 @@
 from pydantic import Base64Bytes, BaseModel, field_validator
 
+from src.services.crypto import calculate_checksum
+
 
 class EncryptedActivationRequest(BaseModel):
     encrypted_sync_key: Base64Bytes
@@ -29,6 +31,16 @@ class DeviceDataSchema(BaseModel):
         for part in parts:
             if len(part) != 4 or not part.isalnum():
                 raise ValueError(err_msg)
+
+        try:
+            int(parts[3], 16)
+        except ValueError:
+            raise ValueError("Invalid license key checksum")
+
+        expected_checksum = calculate_checksum(parts)
+        if parts[3].upper() != expected_checksum:
+            raise ValueError("Invalid license key checksum")
+
         return v.upper()
 
 

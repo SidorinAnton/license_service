@@ -37,7 +37,7 @@ def rsa_key_pair():
 @pytest.fixture
 def device_data():
     return Device(
-        license_key="ABCD-1234-EFGH-5678",
+        license_key="ABCD-1234-EFGH-B6B6",
         os_system="Linux",
         os_release="6.8.0-147-generic",
         os_version="#147-Ubuntu SMP PREEMPT_DYNAMIC",

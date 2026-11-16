@@ -70,7 +70,7 @@ ifeq (run-client,$(firstword $(MAKECMDGOALS)))
 endif
 
 run-client:
-	$(eval CLIENT_KEY := $(or $(word 1,$(RUN_ARGS)),ABCD-1234-EFGH-5678))
+	$(eval CLIENT_KEY := $(or $(word 1,$(RUN_ARGS)),ABCD-1234-EFGH-B6B6))
 	cd license_client && PYTHONPATH=. uv run python src/main.py $(CLIENT_KEY) http://localhost:8000/api/v1/client/activations
 
 run-server:
