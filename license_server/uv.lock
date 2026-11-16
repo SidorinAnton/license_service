@@ -520,6 +520,7 @@ wheels = [
 name = "license-server"
 version = "0.1.0"
 source = { virtual = "." }
+default-groups = []
 dependencies = [
     { name = "alembic" },
     { name = "cryptography" },

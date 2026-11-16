@@ -105,6 +105,4 @@ docker-migrate-rollback:
 	docker exec -it license_app uv run alembic downgrade -1
 
 docker-run-tests:
-	$(MAKE) docker-up
-	docker exec -it license_app uv run pytest -v
-	$(MAKE) docker-down
+	docker exec -it -e PYTHONPATH=. license_app uv run --group dev pytest -v
