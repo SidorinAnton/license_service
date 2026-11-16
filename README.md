@@ -76,6 +76,7 @@
 ### 1. Предварительные требования
 
 - Python 3.12+ и менеджер пакетов [`uv`](https://docs.astral.sh/uv/)
+- Пре-коммит 
 - Docker & Docker Compose (для запуска сервера)
 
 ### 2. Установка зависимостей
@@ -105,7 +106,7 @@ make generate-keys
 echo '830fb6c0-b3db-48fe-be8f-af97299d5134' > vault.txt
 
 # Поднимаем бек + бд
-make docker-up
+make docker-up  # Тут же произойдет decrypt и копирования .env
 
 # Добавляем лицензии в БД (например, TEST-2026-KY01-D998)
 make docker-generate-license
