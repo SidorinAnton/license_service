@@ -104,14 +104,21 @@ make generate-keys
 # Поднимаем бек + бд
 make docker-up
 
+# Раскрываем приватный ключ
+make decrypt
+
 # Добавляем лицензии в БД (например, TEST-2026-KKEY-0001)
 make docker-generate-license
 
 # Запускаем скрипт, чтобы активировать лицензию
-make run-client TEST-2026-KKEY-0001
+make run-client TEST-2026-KY01-D998
+make run-client TEST-2026-KY02-8822
 
 # Останавливает бек и бд
 make docker-down 
+
+# На всякий случай:
+git restore license_server/config/private_key.pem
 ```
 
 ## Разработка и тестирование
