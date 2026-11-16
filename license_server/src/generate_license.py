@@ -30,7 +30,7 @@ def generate_licenses():
                 key=key,
                 is_active=(i < 8),
                 expires_at=datetime.datetime.now() + datetime.timedelta(days=30 * i),
-                max_activations=3 if i == 3 else 1
+                max_activations=3 if i == 3 else 1,
             )
 
             db.add(test_license)
