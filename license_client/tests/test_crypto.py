@@ -45,6 +45,7 @@ def device_data():
         cpu_cores=8,
         mac_address="00:00:00:00:00:00",
         machine_id="abcdefghijklmnopqrstuwvxyz123456",
+        disk_serial_number="ABCDEFGHIJKLMNO",
     )
 
 

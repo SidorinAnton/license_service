@@ -20,6 +20,7 @@ def encrypt_test_payload(
     cpu_arch="bbb",
     cpu_cores=8,
     mac_address="ccc",
+    disk_serial_number="ddd",
     timestamp: int | None = None,
 ) -> dict[str, bytes]:
     raw_payload = {
@@ -31,6 +32,7 @@ def encrypt_test_payload(
         "cpu_arch": cpu_arch,
         "cpu_cores": cpu_cores,
         "mac_address": mac_address,
+        "disk_serial_number": disk_serial_number,
         "timestamp": timestamp or int(time.time()),
     }
 

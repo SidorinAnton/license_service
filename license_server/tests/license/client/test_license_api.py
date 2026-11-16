@@ -11,6 +11,7 @@ def test_activate_endpoint_success(client, db_session, sample_license):
     data = encrypt_test_payload(
         license_key=sample_license.key,
         machine_id="aaa",
+        disk_serial_number="ggg",
         os_system="bbb",
         os_release="ccc",
         os_version="ddd",
@@ -31,6 +32,7 @@ def test_activate_endpoint_success(client, db_session, sample_license):
         DeviceDataSchema(
             license_key=sample_license.key,
             machine_id="aaa",
+            disk_serial_number="ggg",
             os_system="bbb",
             os_release="ccc",
             os_version="ddd",

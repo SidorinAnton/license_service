@@ -13,7 +13,7 @@ from tests.license.crypto_utils import encrypt_test_payload
 
 def test_decrypt_payload_success():
     original_data = {
-        "license_key": "1234-1234-1234-1234",
+        "license_key": "1111-1111-1111-BA9F",
         "machine_id": "aaa",
         "os_system": "aaa",
         "os_release": "aaa",
@@ -29,7 +29,7 @@ def test_decrypt_payload_success():
         nonce=encrypted_packet["nonce"],
         cipher_data=encrypted_packet["cipher_data"],
     )
-    assert decrypted_data["license_key"] == "1234-1234-1234-1234"
+    assert decrypted_data["license_key"] == "1111-1111-1111-BA9F"
     assert decrypted_data["machine_id"] == "aaa"
     assert decrypted_data["os_system"] == "aaa"
     assert decrypted_data["os_release"] == "aaa"
@@ -43,7 +43,7 @@ def test_decrypt_payload_success():
 
 def test_decrypt_payload_invalid_tag_or_corrupted():
     original_data = {
-        "license_key": "1234-1234-1234-1234",
+        "license_key": "1111-1111-1111-BA9F",
         "machine_id": "crypto-test",
     }
     encrypted_packet = encrypt_test_payload(**original_data)

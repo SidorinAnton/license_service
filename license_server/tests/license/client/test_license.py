@@ -19,6 +19,7 @@ def get_device_data(license_key, machine_id="machine-1") -> DeviceDataSchema:
     return DeviceDataSchema(
         license_key=license_key,
         machine_id=machine_id,
+        disk_serial_number="aaa",
         os_system="Linux",
         os_release="",
         os_version="",

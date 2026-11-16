@@ -53,7 +53,9 @@ def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
         )
 
     return hmac.new(
-        key=settings.LICENSE_SALT.encode("utf-8"), msg=raw_str.encode("utf-8"), digestmod=hashlib.sha256
+        key=settings.LICENSE_SALT.encode("utf-8"),
+        msg=raw_str.encode("utf-8"),
+        digestmod=hashlib.sha256,
     ).hexdigest()
 
 
