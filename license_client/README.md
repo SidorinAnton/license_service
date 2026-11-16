@@ -13,8 +13,9 @@ CLI-скрипт:
 - **Сеть**: MAC-адрес основного интерфейса
 - **Уникальный идентификатор устройства (Machine ID)**:
     - Linux: `/etc/machine-id`
-    - Windows: `MachineGuid` из реестра
+    - Windows: `MachineGuid`
     - macOS: `IOPlatformUUID`
+- **Диск**: серийный номер диска
 
 Пример собираемых данных:
 
@@ -27,7 +28,8 @@ CLI-скрипт:
   "cpu_arch": "x86_64",
   "cpu_cores": 8,
   "mac_address": "00:00:00:00:00:00",
-  "machine_id": "abcdefghijklmnop1234567890abcdef"
+  "machine_id": "abcdefghijklmnop1234567890abcdef",
+  "disk_serial_number": "ABCDEFGHIJKLMNO"
 }
 ```
 

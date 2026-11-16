@@ -1,7 +1,8 @@
 import hashlib
+import hmac
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -24,12 +25,36 @@ TIMESTAMP_TTL = 300
 
 
 def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
-    raw_str = (
-        f"{device_data.machine_id}-{device_data.os_system or ''}-{device_data.os_release or ''}-"
-        f"{device_data.os_version or ''}-{device_data.cpu_arch or ''}-{device_data.cpu_cores or ''}-"
-        f"{device_data.mac_address or ''}-{settings.LICENSE_SALT}"
+    def _normalization(val) -> str:
+        if val is None:
+            return "none"
+        s = str(val).strip()
+        return s if s else "none"
+
+    raw_str = "|".join(
+        [
+            "v1-weak",
+            f"os_system={_normalization(device_data.os_system)}",
+            f"os_version={_normalization(device_data.os_version)}",
+            f"os_release={_normalization(device_data.os_release)}",
+            f"cpu_arch={_normalization(device_data.cpu_arch)}",
+            f"cpu_cores={_normalization(device_data.cpu_cores)}",
+            f"mac={_normalization(device_data.mac_address)}",
+        ]
     )
-    return hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
+
+    if device_data.machine_id or device_data.disk_serial_number:
+        raw_str = "|".join(
+            [
+                "v1",
+                f"machine_id={_normalization(device_data.machine_id)}",
+                f"disk_serial={_normalization(device_data.disk_serial_number)}",
+            ]
+        )
+
+    return hmac.new(
+        key=settings.LICENSE_SALT.encode("utf-8"), msg=raw_str.encode("utf-8"), digestmod=hashlib.sha256
+    ).hexdigest()
 
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
@@ -55,7 +80,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         logger.warning("Attempt to activate inactive license ID: %s", license_obj.id)
         raise LicenseInactiveError("License key is deactivated")
 
-    if license_obj.expires_at and license_obj.expires_at < datetime.now():
+    if license_obj.expires_at and license_obj.expires_at < datetime.now(UTC):
         logger.warning("Attempt to activate expired license ID: %s", license_obj.id)
         raise LicenseExpiredError("License key has expired")
 
@@ -85,6 +110,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         cpu_arch=device_data.cpu_arch,
         cpu_cores=device_data.cpu_cores,
         mac_address=device_data.mac_address,
+        disk_serial_number=device_data.disk_serial_number,
     )
 
     db.add(new_activation)
@@ -106,7 +132,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
             raise
 
         logger.warning("License %s is already activated", license_obj.id)
-        raise LicenseAlreadyActivatedError
+        raise LicenseAlreadyActivatedError("This license has already been activated")
 
     logger.info(
         "Successfully activated license ID %s for fingerprint prefix: %s...",

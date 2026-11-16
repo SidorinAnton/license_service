@@ -44,6 +44,7 @@
 | `403 Forbidden`            | `License key has expired`                                           |
 | `404 Not Found`            | `License key not found`                                             |
 | `409 Conflict`             | `License is already used`                                           |
+| `409 Conflict`             | `Activation limit reached`                                          |
 | `422 Unprocessable Entity` | `Invalid license key format. Expected format: XXXX-XXXX-XXXX-XXXX`  |
 | `422 Unprocessable Entity` | `Field required` (для `encrypted_sync_key`, `nonce`, `cipher_data`) |
 
