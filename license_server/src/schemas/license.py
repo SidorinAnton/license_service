@@ -32,7 +32,7 @@ class DeviceDataSchema(BaseModel):
         if len(parts) != 4:
             raise ValueError(err_msg)
 
-        pattern = re.compile(r'^[A-Z0-9]{4}$')
+        pattern = re.compile(r"^[A-Z0-9]{4}$")
         for part in parts:
             if len(part) != 4 or not pattern.match(part):
                 raise ValueError(err_msg)
