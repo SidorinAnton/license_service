@@ -28,8 +28,9 @@ def generate_licenses():
 
             test_license = LicenseModel(
                 key=key,
-                is_active=(i % 2 == 0),  # Четные активные, нечетные выключенные
+                is_active=(i < 8),
                 expires_at=datetime.datetime.now() + datetime.timedelta(days=30 * i),
+                max_activations=3 if i == 3 else 1
             )
 
             db.add(test_license)

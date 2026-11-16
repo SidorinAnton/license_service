@@ -101,11 +101,11 @@ make generate-keys
 ### 4. Запуск сервера через Docker (Рекомендуемый способ)
 
 ```shell
+# Для демо!!!  (в реальности тут не будет ключа расшифровки)
+echo '830fb6c0-b3db-48fe-be8f-af97299d5134' > vault.txt
+
 # Поднимаем бек + бд
 make docker-up
-
-# Раскрываем приватный ключ
-make decrypt
 
 # Добавляем лицензии в БД (например, TEST-2026-KKEY-0001)
 make docker-generate-license
@@ -116,9 +116,6 @@ make run-client TEST-2026-KY02-8822
 
 # Останавливает бек и бд
 make docker-down 
-
-# На всякий случай:
-git restore license_server/config/private_key.pem
 ```
 
 ## Разработка и тестирование

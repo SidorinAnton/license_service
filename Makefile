@@ -90,11 +90,13 @@ docker-generate-license:
 # ==========================================
 # DOCKER COMPOSE
 # ==========================================
-docker-up:
+docker-up: decrypt
+	cd license_server && [ -f .env ] || cp .env.example .env
 	cd license_server && docker-compose -f docker-compose.dev.yaml up --build -d
 
 docker-down:
 	cd license_server && docker-compose -f docker-compose.dev.yaml down -v
+	git restore license_server/config/private_key.pem
 
 docker-migrate:
 	docker exec -it license_app uv run alembic upgrade head
@@ -103,4 +105,6 @@ docker-migrate-rollback:
 	docker exec -it license_app uv run alembic downgrade -1
 
 docker-run-tests:
+	$(MAKE) docker-up
 	docker exec -it license_app uv run pytest -v
+	$(MAKE) docker-down

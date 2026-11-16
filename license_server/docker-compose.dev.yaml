@@ -27,7 +27,8 @@ services:
     env_file:
       - .env
     environment:
-      # переопределяем host. В .env -- localhost, тут -- postgres
+      # переопределяем host
+      # В .env -- localhost, тут -- postgres
       DATABASE_URL: postgresql+psycopg://admin:admin@postgres:5432/license_db
     ports:
       - "8000:8000"
