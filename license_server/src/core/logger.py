@@ -1,6 +1,8 @@
 import logging
 import re
 
+from src.core.config import settings
+
 
 class SecureFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
@@ -34,3 +36,5 @@ def setup_logging():
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     root_logger.handlers = [handler]
+
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO if settings.DEBUG else logging.WARNING)

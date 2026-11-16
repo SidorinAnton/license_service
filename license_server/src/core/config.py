@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["dev", "prod", "test"] = "dev"
     DEBUG: bool = False
 
-    LICENSE_SALT: str = "some_salt"
+    LICENSE_SALT: str
 
     APP_NAME: str = "license_service"
     APP_VERSION: str = "0.1.0"

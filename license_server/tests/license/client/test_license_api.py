@@ -49,11 +49,8 @@ def test_activate_endpoint_idempotent(client, db_session, sample_license):
     assert response_1.json() == {"status": "success", "message": "License successfully activated on this device"}
 
     response_2 = client.post("/api/v1/client/activations", json=data)
-    assert response_2.status_code == 200
-    assert response_2.json() == {
-        "status": "already_activated",
-        "message": "Device is already registered for this license",
-    }
+    assert response_2.status_code == 409
+    assert response_2.json() == {"detail": "This license has already been activated"}
 
     act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).all()
     assert len(act) == 1
@@ -151,4 +148,30 @@ def test_activate_endpoint_limit_exceeded(client, sample_license):
     data2 = encrypt_test_payload(sample_license.key, machine_id="m-2")
     request_2 = client.post("/api/v1/client/activations", json=build_http_payload(data2))
     assert request_2.status_code == 409
-    assert request_2.json() == {"detail": "License is already used"}
+    assert request_2.json() == {"detail": "Activation limit reached for this license"}
+
+
+def test_activate_endpoint_multiple_activations(client, db_session, multi_activation_license):
+    for i in range(3):
+        data = encrypt_test_payload(multi_activation_license.key, machine_id=f"m-{i}")
+        response = client.post("/api/v1/client/activations", json=build_http_payload(data))
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+    assert db_session.query(ActivationModel).filter_by(license_id=multi_activation_license.id).count() == 3
+
+    data4 = encrypt_test_payload(multi_activation_license.key, machine_id="m-3")
+    response4 = client.post("/api/v1/client/activations", json=build_http_payload(data4))
+    assert response4.status_code == 409
+    assert response4.json() == {"detail": "Activation limit reached for this license"}
+
+
+def test_activate_endpoint_idempotent_when_limit_reached(client, db_session, multi_activation_license):
+    for i in range(3):
+        data = encrypt_test_payload(multi_activation_license.key, machine_id=f"m-{i}")
+        assert client.post("/api/v1/client/activations", json=build_http_payload(data)).status_code == 200
+
+    repeat = encrypt_test_payload(multi_activation_license.key, machine_id="m-1")
+    response = client.post("/api/v1/client/activations", json=build_http_payload(repeat))
+    assert response.status_code == 409
+    assert response.json() == {"detail": "This license has already been activated"}

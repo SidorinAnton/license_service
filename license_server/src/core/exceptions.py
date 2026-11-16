@@ -18,6 +18,10 @@ class LicenseAlreadyActivatedError(LicenseServiceError):
     pass
 
 
+class LicenseActivationLimitReachedError(LicenseServiceError):
+    pass
+
+
 class TimestampExpiredError(LicenseServiceError):
     pass
 

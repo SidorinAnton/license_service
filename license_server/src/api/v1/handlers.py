@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from src.core.exceptions import (
     DecryptionError,
+    LicenseActivationLimitReachedError,
     LicenseAlreadyActivatedError,
     LicenseExpiredError,
     LicenseInactiveError,
@@ -15,7 +16,8 @@ EXCEPTION_MAP: dict[type[Exception], tuple[int, str]] = {
     LicenseNotFoundError: (status.HTTP_404_NOT_FOUND, "License not found"),
     LicenseExpiredError: (status.HTTP_403_FORBIDDEN, "License expired"),
     LicenseInactiveError: (status.HTTP_403_FORBIDDEN, "License inactive"),
-    LicenseAlreadyActivatedError: (status.HTTP_409_CONFLICT, "Activation limit reached"),
+    LicenseAlreadyActivatedError: (status.HTTP_409_CONFLICT, "License is activated"),
+    LicenseActivationLimitReachedError: (status.HTTP_409_CONFLICT, "Activation limit reached"),
     TimestampExpiredError: (status.HTTP_400_BAD_REQUEST, "Timestamp expired"),
 }
 

@@ -3,6 +3,7 @@ import time
 import pytest
 
 from src.core.exceptions import (
+    LicenseActivationLimitReachedError,
     LicenseAlreadyActivatedError,
     LicenseExpiredError,
     LicenseInactiveError,
@@ -47,14 +48,27 @@ def test_activate_license_success(db_session, sample_license):
 def test_activate_license_same_key_and_device(db_session, sample_license):
     device_data = get_device_data(sample_license.key)
     activate_device_service(db=db_session, device_data=device_data)
-    result = activate_device_service(db=db_session, device_data=device_data)
-    assert result == {"status": "already_activated", "message": "Device is already registered for this license"}
+
+    with pytest.raises(LicenseAlreadyActivatedError, match="This license has already been activated"):
+        activate_device_service(db=db_session, device_data=device_data)
+
     assert (
         db_session.query(ActivationModel)
         .filter_by(license_id=sample_license.id, machine_id=device_data.machine_id)
         .count()
         == 1
     )
+
+
+def test_activate_license_idempotent_when_limit_reached(db_session, multi_activation_license):
+    key = multi_activation_license.key
+    for i in range(3):
+        activate_device_service(db=db_session, device_data=get_device_data(key, f"machine-{i}"))
+
+    with pytest.raises(LicenseAlreadyActivatedError, match="This license has already been activated"):
+        activate_device_service(db=db_session, device_data=get_device_data(key, "machine-1"))
+
+    assert db_session.query(ActivationModel).filter_by(license_id=multi_activation_license.id).count() == 3
 
 
 def test_activate_license_not_found(db_session):
@@ -75,12 +89,30 @@ def test_activate_license_expired(db_session, expired_license):
         activate_device_service(db=db_session, device_data=device_data)
 
 
-def test_activate_license_limit_exceeded(db_session, sample_license):
+def test_activate_license_limit_reached_default_one(db_session, sample_license):
     device_data_1 = get_device_data(sample_license.key, "machine-1")
     device_data_2 = get_device_data(sample_license.key, "machine-2")
+
     activate_device_service(db=db_session, device_data=device_data_1)
-    with pytest.raises(LicenseAlreadyActivatedError, match="License is already used"):
+    with pytest.raises(LicenseActivationLimitReachedError, match="Activation limit reached for this license"):
         activate_device_service(db=db_session, device_data=device_data_2)
+
+
+def test_activate_license_multiple_activations_allowed(db_session, multi_activation_license):
+    key = multi_activation_license.key
+
+    for i in range(3):
+        result = activate_device_service(db=db_session, device_data=get_device_data(key, f"machine-{i}"))
+        assert result["status"] == "success"
+
+    activations = db_session.query(ActivationModel).filter_by(license_id=multi_activation_license.id).all()
+    assert len(activations) == 3
+    assert {a.machine_id for a in activations} == {"machine-0", "machine-1", "machine-2"}
+
+    with pytest.raises(LicenseActivationLimitReachedError, match="Activation limit reached for this license"):
+        activate_device_service(db=db_session, device_data=get_device_data(key, "machine-3"))
+
+    assert db_session.query(ActivationModel).filter_by(license_id=multi_activation_license.id).count() == 3
 
 
 def test_activate_different_licenses_same_machine(db_session):
@@ -111,3 +143,8 @@ def test_generate_device_fingerprint_consistency():
 
     assert fp_1 == fp_2
     assert fp_1 != fp_3
+
+
+def test_integrity_error_not_in_unique_key_fingerprint(db_session, sample_license):
+    data = get_device_data(sample_license.key, machine_id="")
+    data.machine_id = None

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.core.exceptions import (
+    LicenseActivationLimitReachedError,
     LicenseAlreadyActivatedError,
     LicenseExpiredError,
     LicenseInactiveError,
@@ -41,7 +42,10 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:
         raise TimestampExpiredError("Payload expired or invalid timestamp")
 
-    license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).first()
+    fingerprint = generate_device_fingerprint(device_data)
+
+    # Все одинаковые параллельные license_key тут встанут до commit/rollback
+    license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).with_for_update().first()
 
     if license_obj is None:
         logger.warning("License key %s not found in database", device_data.license_key)
@@ -55,16 +59,21 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         logger.warning("Attempt to activate expired license ID: %s", license_obj.id)
         raise LicenseExpiredError("License key has expired")
 
-    fingerprint = generate_device_fingerprint(device_data)
-    existing_activation = db.query(ActivationModel).filter(ActivationModel.license_id == license_obj.id).first()
+    activations = db.query(ActivationModel.id, ActivationModel.fingerprint).filter_by(license_id=license_obj.id).all()
 
-    if existing_activation:
-        if existing_activation.fingerprint == fingerprint:
-            logger.info("Idempotent activation: device already registered for license ID: %s", license_obj.id)
-            return {"status": "already_activated", "message": "Device is already registered for this license"}
+    for row in activations:
+        if fingerprint in row:
+            logger.warning("License %s is already activated", license_obj.id)
+            raise LicenseAlreadyActivatedError("This license has already been activated")
 
-        logger.warning("Activation conflict: license ID %s is already used by another device", license_obj.id)
-        raise LicenseAlreadyActivatedError("License is already used")
+    if len(activations) >= license_obj.max_activations:
+        logger.warning(
+            "Activation limit reached for license ID %s (%s/%s)",
+            license_obj.id,
+            len(activations),
+            license_obj.max_activations,
+        )
+        raise LicenseActivationLimitReachedError("Activation limit reached for this license")
 
     new_activation = ActivationModel(
         license_id=license_obj.id,
@@ -84,10 +93,26 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         db.commit()
     except IntegrityError:
         db.rollback()
-        logger.info("IntegrityError caught (race condition handled) for license ID: %s", license_obj.id)
-        return {"status": "already_activated", "message": "Device is already registered for this license"}
 
-    logger.info("Successfully activated license ID %s for fingerprint prefix: %s...", license_obj.id, fingerprint[:8])
+        existing = (
+            db.query(ActivationModel)
+            .filter(
+                ActivationModel.license_id == license_obj.id,
+                ActivationModel.fingerprint == fingerprint,
+            )
+            .first()
+        )
+        if existing is None:
+            raise
+
+        logger.warning("License %s is already activated", license_obj.id)
+        raise LicenseAlreadyActivatedError
+
+    logger.info(
+        "Successfully activated license ID %s for fingerprint prefix: %s...",
+        license_obj.id,
+        fingerprint[:8],
+    )
     return {
         "status": "success",
         "message": "License successfully activated on this device",

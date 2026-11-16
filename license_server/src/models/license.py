@@ -12,6 +12,7 @@ class LicenseModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    max_activations = Column(Integer, nullable=False, default=1, server_default="1")
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.now, nullable=False)
 
