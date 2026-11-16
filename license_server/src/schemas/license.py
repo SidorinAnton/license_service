@@ -1,3 +1,5 @@
+import re
+
 from pydantic import Base64Bytes, BaseModel, field_validator
 
 from src.services.crypto import calculate_checksum
@@ -18,7 +20,7 @@ class DeviceDataSchema(BaseModel):
     cpu_cores: int
     mac_address: str | None
     machine_id: str | None
-    disk_serial_number: str  #| None
+    disk_serial_number: str | None
     timestamp: int
 
     @field_validator("license_key")
@@ -26,11 +28,13 @@ class DeviceDataSchema(BaseModel):
     def normalize(cls, v: str) -> str:
         err_msg = "Invalid license key format. Expected format: XXXX-XXXX-XXXX-XXXX"
 
-        parts = v.split("-")
+        parts = v.upper().split("-")
         if len(parts) != 4:
             raise ValueError(err_msg)
+
+        pattern = re.compile(r'^[A-Z0-9]{4}$')
         for part in parts:
-            if len(part) != 4 or not part.isalnum():
+            if len(part) != 4 or not pattern.match(part):
                 raise ValueError(err_msg)
 
         try:
