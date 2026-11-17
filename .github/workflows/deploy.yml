@@ -25,7 +25,7 @@ jobs:
             git reset --hard origin/main
 
             printf '%s' "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault.txt
-            ansible-vault encrypt license_server/config/private_key.pem
+            ansible-vault decrypt license_server/config/private_key.pem
             rm -f vault.txt
 
             cat > license_server/.env <<EOF
