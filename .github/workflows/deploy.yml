@@ -24,10 +24,9 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            printf '%s' "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault.txt
-            ansible-vault view license_server/config/private_key.pem \
-              --vault-password-file /tmp/vault.txt > license_server/config/private_key.pem
-            rm -f /tmp/vault.txt
+            printf '%s' "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault.txt
+            ansible-vault encrypt license_server/config/private_key.pem
+            rm -f vault.txt
 
             cat > license_server/.env <<EOF
             ENVIRONMENT=prod
