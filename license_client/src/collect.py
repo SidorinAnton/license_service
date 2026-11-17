@@ -80,6 +80,6 @@ def _disk_serial() -> str | None:
                     return line.split('"')[-2].strip()
             return None
 
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except:  # noqa E722
         return None
     return None
