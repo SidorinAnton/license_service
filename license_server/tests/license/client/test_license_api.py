@@ -2,7 +2,8 @@ import base64
 import time
 
 from src.models.license import ActivationModel
-from src.schemas.license import DeviceDataSchema
+from src.schemas.license import ActivationTokenPayload, DeviceDataSchema
+from src.services.crypto import sign_activation_token
 from src.services.license import generate_device_fingerprint
 from tests.license.crypto_utils import build_http_payload, encrypt_test_payload
 
@@ -21,11 +22,22 @@ def test_activate_endpoint_success(client, db_session, sample_license):
     )
 
     response = client.post("/api/v1/client/activations", json=build_http_payload(data))
-
     assert response.status_code == 200
-    assert response.json() == {"status": "success", "message": "License successfully activated on this device"}
 
     act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id, machine_id="aaa").one()
+
+    token_payload = ActivationTokenPayload(
+        license_key=sample_license.key,
+        fingerprint=act.fingerprint,
+        expires_at=sample_license.expires_at,
+        issued_at=int(act.activated_at.timestamp()),
+    )
+
+    assert response.json() == {
+        "status": "success",
+        "message": "License successfully activated on this device",
+        "activation_token": sign_activation_token(token_payload),
+    }
     assert act.license_id == sample_license.id
     assert act.machine_id == "aaa"
     assert act.fingerprint == generate_device_fingerprint(
@@ -48,7 +60,19 @@ def test_activate_endpoint_idempotent(client, db_session, sample_license):
     data = build_http_payload(encrypt_test_payload(sample_license.key, machine_id="same-machine"))
     response_1 = client.post("/api/v1/client/activations", json=data)
     assert response_1.status_code == 200
-    assert response_1.json() == {"status": "success", "message": "License successfully activated on this device"}
+
+    act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).first()
+    token_payload = ActivationTokenPayload(
+        license_key=sample_license.key,
+        fingerprint=act.fingerprint,
+        expires_at=sample_license.expires_at,
+        issued_at=int(act.activated_at.timestamp()),
+    )
+    assert response_1.json() == {
+        "status": "success",
+        "message": "License successfully activated on this device",
+        "activation_token": sign_activation_token(token_payload),
+    }
 
     response_2 = client.post("/api/v1/client/activations", json=data)
     assert response_2.status_code == 409
@@ -145,7 +169,7 @@ def test_activate_endpoint_limit_exceeded(client, sample_license):
     data1 = encrypt_test_payload(sample_license.key, machine_id="m-1")
     request_1 = client.post("/api/v1/client/activations", json=build_http_payload(data1))
     assert request_1.status_code == 200
-    assert request_1.json() == {"status": "success", "message": "License successfully activated on this device"}
+    assert request_1.json()["status"] == "success"
 
     data2 = encrypt_test_payload(sample_license.key, machine_id="m-2")
     request_2 = client.post("/api/v1/client/activations", json=build_http_payload(data2))

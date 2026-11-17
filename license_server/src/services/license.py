@@ -17,7 +17,8 @@ from src.core.exceptions import (
     TimestampExpiredError,
 )
 from src.models.license import ActivationModel, LicenseModel
-from src.schemas.license import DeviceDataSchema
+from src.schemas.license import ActivationTokenPayload, DeviceDataSchema
+from src.services.crypto import sign_activation_token
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,13 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
         logger.warning("License %s is already activated", license_obj.id)
         raise LicenseAlreadyActivatedError("This license has already been activated")
 
+    token_payload = ActivationTokenPayload(
+        license_key=license_obj.key,
+        fingerprint=fingerprint,
+        expires_at=license_obj.expires_at,
+        issued_at=int(new_activation.activated_at.timestamp()),
+    )
+
     logger.info(
         "Successfully activated license ID %s for fingerprint prefix: %s...",
         license_obj.id,
@@ -144,4 +152,5 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     return {
         "status": "success",
         "message": "License successfully activated on this device",
+        "activation_token": sign_activation_token(token_payload),
     }

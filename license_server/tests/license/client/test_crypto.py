@@ -1,13 +1,17 @@
+import base64
 import json
 import os
+from datetime import UTC, datetime
 
 import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from src.core.exceptions import DecryptionError
-from src.services.crypto import decrypt_payload
+from src.schemas.license import ActivationTokenPayload
+from src.services.crypto import decrypt_payload, load_private_key, sign_activation_token
 from tests.license.crypto_utils import encrypt_test_payload
 
 
@@ -109,3 +113,40 @@ def test_decrypt_payload_wrong_private_key():
 
     with pytest.raises(DecryptionError, match="Failed to decrypt symmetric key"):
         decrypt_payload(encrypted_key=encrypted_key, nonce=nonce, cipher_data=cipher_data)
+
+
+def test_sign_activation_token_success():
+    payload = ActivationTokenPayload(
+        license_key="TEST-1234-ABCD-4CE4",
+        fingerprint="dummy_fingerprint_hash_123",
+        expires_at=datetime(2027, 1, 1, 0, 0, 0, tzinfo=UTC),
+        issued_at=1700000000,
+    )
+
+    token_str = sign_activation_token(payload)
+    assert isinstance(token_str, str)
+    assert len(token_str) > 0
+
+    decoded_packet = json.loads(base64.b64decode(token_str).decode("utf-8"))
+    assert "payload" in decoded_packet
+    assert "signature" in decoded_packet
+
+    payload_bytes = base64.b64decode(decoded_packet["payload"])
+    signature_bytes = base64.b64decode(decoded_packet["signature"])
+
+    private_key_pem = load_private_key()
+    private_key = load_pem_private_key(private_key_pem, password=None)
+    public_key = private_key.public_key()
+
+    public_key.verify(
+        signature_bytes,
+        payload_bytes,
+        padding.PKCS1v15(),
+        hashes.SHA256(),
+    )
+
+    data = json.loads(payload_bytes.decode("utf-8"))
+    assert data["license_key"] == "TEST-1234-ABCD-4CE4"
+    assert data["fingerprint"] == "dummy_fingerprint_hash_123"
+    assert data["issued_at"] == 1700000000
+    assert "2027-01-01" in data["expires_at"]

@@ -2,8 +2,8 @@ import datetime
 import logging
 
 from src.core.database import SessionLocal
+from src.core.utils import calculate_checksum
 from src.models.license import LicenseModel
-from src.services.crypto import calculate_checksum
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

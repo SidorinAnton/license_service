@@ -1,8 +1,9 @@
 import re
+from datetime import datetime
 
 from pydantic import Base64Bytes, BaseModel, field_validator
 
-from src.services.crypto import calculate_checksum
+from src.core.utils import calculate_checksum
 
 
 class EncryptedActivationRequest(BaseModel):
@@ -49,6 +50,14 @@ class DeviceDataSchema(BaseModel):
         return v.upper()
 
 
+class ActivationTokenPayload(BaseModel):
+    license_key: str
+    fingerprint: str
+    expires_at: datetime | None = None
+    issued_at: int
+
+
 class ActivationResponse(BaseModel):
     status: str
     message: str
+    activation_token: str

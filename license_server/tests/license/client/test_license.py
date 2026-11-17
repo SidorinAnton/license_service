@@ -15,7 +15,8 @@ from src.core.exceptions import (
     LicenseNotFoundError,
 )
 from src.models.license import ActivationModel, LicenseModel
-from src.schemas.license import DeviceDataSchema
+from src.schemas.license import ActivationTokenPayload, DeviceDataSchema
+from src.services.crypto import sign_activation_token
 from src.services.license import activate_device_service, generate_device_fingerprint
 from tests.license.factories import LicenseFactory
 
@@ -39,13 +40,20 @@ def test_activate_license_success(db_session, sample_license):
     device_data = get_device_data(sample_license.key)
     result = activate_device_service(db=db_session, device_data=device_data)
 
+    activations = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).all()
+
+    token_payload = ActivationTokenPayload(
+        license_key=sample_license.key,
+        fingerprint=activations[0].fingerprint,
+        expires_at=sample_license.expires_at,
+        issued_at=int(activations[0].activated_at.timestamp()),
+    )
+
     assert result == {
         "status": "success",
         "message": "License successfully activated on this device",
+        "activation_token": sign_activation_token(token_payload),
     }
-
-    activations = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).all()
-
     assert len(activations) == 1
     assert activations[0].machine_id == device_data.machine_id
     assert activations[0].os_system == device_data.os_system

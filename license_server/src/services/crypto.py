@@ -1,6 +1,6 @@
+import base64
 import json
 import logging
-import zlib
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from src.core.config import settings
 from src.core.exceptions import DecryptionError
+from src.schemas.license import ActivationTokenPayload
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,20 @@ def decrypt_payload(encrypted_key: bytes, nonce: bytes, cipher_data: bytes) -> d
         raise DecryptionError("Failed to decrypt payload")
 
 
-def calculate_checksum(parts: list[str]) -> str:
-    base_str = "".join(parts[:3]).upper()
-    # 1) calculate 32-bit checksum
-    # 2) 0xFFFF -- 16-bit mask (0b1111_1111_1111_1111)
-    # 3) crc & ffff = 16-bit crc
-    crc = zlib.crc32(base_str.encode("utf-8")) & 0xFFFF
-    # 4) 04X -- make crc in HEX (16-sys) and get 4 symbols
-    return f"{crc:04X}"
+def sign_activation_token(token_payload: ActivationTokenPayload) -> str:
+    private_key_pem = load_private_key()
+    private_key = load_pem_private_key(private_key_pem, password=None)
+
+    payload_bytes = token_payload.model_dump_json(exclude_unset=True).encode("utf-8")
+
+    signature = private_key.sign(
+        payload_bytes,
+        padding.PKCS1v15(),
+        hashes.SHA256(),
+    )
+
+    packet = {
+        "payload": base64.b64encode(payload_bytes).decode("utf-8"),
+        "signature": base64.b64encode(signature).decode("utf-8"),
+    }
+    return base64.b64encode(json.dumps(packet).encode("utf-8")).decode("utf-8")
