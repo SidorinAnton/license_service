@@ -112,8 +112,11 @@ make docker-up  # Тут же произойдет decrypt и копирован
 make docker-generate-license
 
 # Запускаем скрипт, чтобы активировать лицензию
-make run-client TEST-2026-KY01-D998
-make run-client TEST-2026-KY02-8822
+make run-client-activation TEST-2026-KY01-D998
+make run-client-activation TEST-2026-KY02-8822
+
+# Можно проверить
+make run-client-verification
 
 # Останавливает бек и бд
 make docker-down 
@@ -124,44 +127,45 @@ make docker-down
 Проект использует `Makefile` для единой точки входа:
 
 ```shell
-make generate-keys             # Генерация публичного (на клиенте) и приватного (на сервере) ключа
-make encrypt                   # Шифровка приватного ключа сервера через ansible-vault
-make decrypt                   # Дешифровка приватного ключа сервера через ansible-vault
+make generate-keys                # Генерация публичного (на клиенте) и приватного (на сервере) ключа
+make encrypt                      # Шифровка приватного ключа сервера через ansible-vault
+make decrypt                      # Дешифровка приватного ключа сервера через ansible-vault
 
-make lint-check                # Проверка кода через Ruff
-make lint-fix                  # Автоматическое исправление и форматирование кода
-make test-client               # Запуск тестов клиента через uv (нужен постгрес -- см make start-db)
-make test-server               # Запуск тестов сервера через uv (нужен постгрес -- см make start-db)
-make test-all                  # Запуск всех тестов (test-client + test-server)
-make test-client-cov           # Аналогично test-client, но с покрытием
-make test-server-cov           # Аналогично test-server, но с покрытием
-make test-all-cov              # Запуск тестов с отчетом о покрытии (test-client-cov + test-server-cov)
+make lint-check                   # Проверка кода через Ruff
+make lint-fix                     # Автоматическое исправление и форматирование кода
+make test-client                  # Запуск тестов клиента через uv (нужен постгрес -- см make start-db)
+make test-server                  # Запуск тестов сервера через uv (нужен постгрес -- см make start-db)
+make test-all                     # Запуск всех тестов (test-client + test-server)
+make test-client-cov              # Аналогично test-client, но с покрытием
+make test-server-cov              # Аналогично test-server, но с покрытием
+make test-all-cov                 # Запуск тестов с отчетом о покрытии (test-client-cov + test-server-cov)
 
-make make-migration msg="..."  # Создание новой миграции (нужен постгрес -- см make start-db)
-make migrate                   # Применение миграций Alembic (нужен постгрес -- см make start-db)
-make migrate-rollback          # Откат миграции (нужен постгрес -- см make start-db)
+make make-migration msg="..."     # Создание новой миграции (нужен постгрес -- см make start-db)
+make migrate                      # Применение миграций Alembic (нужен постгрес -- см make start-db)
+make migrate-rollback             # Откат миграции (нужен постгрес -- см make start-db)
 
-make start-db                  # Отдельное поднятие конкретно постгреса в докере (без бэкенда)
+make start-db                     # Отдельное поднятие конкретно постгреса в докере (без бэкенда)
 
-make install-client            # Установка клиента на компьютер через uv
-make run-client <license key>  # Запуск клиента через uv
-make run-server                # Запуск сервера через uv
+make install-client               # Установка клиента на компьютер через uv
+make run-client-activation <key>  # Запуск клиента через uv -- активация лицензии
+make run-client-verification      # Запуск клиента через uv -- проверка полученного токена
+make run-server                   # Запуск сервера через uv
 
-make generate-license          # Добавление отладочных лицензий в базу данных через uv
-make docker-generate-license   # Добавление отладочных лицензий в базу данных через докер
+make generate-license             # Добавление отладочных лицензий в базу данных через uv
+make docker-generate-license      # Добавление отладочных лицензий в базу данных через докер
 
-make docker-up                 # Запуск базы данных и сервера через докер
-make docker-down               # Остановка базы данных и сервера через докер
-make docker-migrate            # Применение миграций в докере
-make docker-migrate-rollback   # Откат миграций в докере
-make docker-run-tests          # Запуск тестов через докер
+make docker-up                    # Запуск базы данных и сервера через докер
+make docker-down                  # Остановка базы данных и сервера через докер
+make docker-migrate               # Применение миграций в докере
+make docker-migrate-rollback      # Откат миграций в докере
+make docker-run-tests             # Запуск тестов через докер
 ```
 
 ### Pre-commit Хуки
 
 В проекте настроен автоматический контроль качества при попытке сделать `git commit`:
 
-1. **Проверка приватных ключей**: Блокирует коммит, если обнаруживается паттерн `-----BEGIN PRIVATE KEY-----`
+1. **Проверка приватных ключей**: Блокирует коммит, если обнаруживается паттерн `--BEGIN PRIVATE KEY--`
 2. **Линтинг**: Автоматически проверяет код через Ruff
 
 Для активации хуков в локальном репозитории нужно выполнить команду:

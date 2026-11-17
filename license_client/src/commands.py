@@ -36,6 +36,7 @@ def handle_activate(args: argparse.Namespace) -> None:
 
     try:
         result = send_activation(args.server, payload)
+        print(f"Result from server: {result}")
     except RuntimeError as e:
         print(f"Activation failed: {e}", file=sys.stderr)
         sys.exit(1)
@@ -64,11 +65,11 @@ def handle_activate(args: argparse.Namespace) -> None:
         "expires_at": token.expires_at,
         "activated_at": int(datetime.now(UTC).timestamp()),
         "server": args.server,
-        "client_version": args.version,
     }
     path = save_license(license_data)
-    print(f"License saved to {path}")
-    print(f"Activated. Expires at: {token.expires_at}")
+    print("Success!!")
+    print(f"License was activated and saved into '{path}'")
+    print(f"License expires at: {token.expires_at}")
 
 
 def handle_verify(args: argparse.Namespace) -> None:

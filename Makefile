@@ -64,14 +64,17 @@ install-client:
 	cd license_client && uv pip install -e .
 	cd license_client && uv tool install .
 
-ifeq (run-client,$(firstword $(MAKECMDGOALS)))
+ifeq (run-client-activation,$(firstword $(MAKECMDGOALS)))
   RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
   $(eval $(RUN_ARGS):;@:)
 endif
 
-run-client:
+run-client-activation:
 	$(eval CLIENT_KEY := $(or $(word 1,$(RUN_ARGS)),ABCD-1234-EFGH-B6B6))
-	cd license_client && PYTHONPATH=. uv run python src/main.py $(CLIENT_KEY) http://localhost:8000/api/v1/client/activations
+	cd license_client && PYTHONPATH=. uv run python src/main.py activate $(CLIENT_KEY) http://localhost:8000/api/v1/client/activations
+
+run-client-verification:
+	cd license_client && PYTHONPATH=. uv run python src/main.py verify
 
 run-server:
 	cd license_server && PYTHONPATH=. uv run uvicorn src.main:app --reload --port 8000

@@ -5,6 +5,10 @@ CLI-скрипт:
 1. принимает от пользователя номер лицензии (формат XXXX-XXXX-XXXX-XXXX)
 2. собирает информацию об аппаратной и программной части устройства
 3. отправляет шифрованные данные на сервер, чтобы зарегистрировать лицензию
+4. после ответа от сервера сохраняет активационный токен с данными в файл `license.lic`
+
+Кроме этого скрипт можно запустить в `verify`. Тогда он вместо похода на сервер попробует прочитать и проверить
+файл `license.lic`.
 
 ## Собираемые данные
 
@@ -51,16 +55,38 @@ CLI-скрипт:
 }
 ```
 
+Пример сохраненного токена (файла `license.lic`)
+
+```json
+{
+  "activation_token": "eyJwYXlsb2FkIjogImV5SnNhV05sYm5ObFgydGxlU0k2SWxSRlUxUXRNakF5Tmkx...",
+  "payload": {
+    "license_key": "TEST-2026-KY03-B8B4",
+    "fingerprint": "f2043f2142bb9dbf2b...",
+    "expires_at": "2027-02-15T02:19:19.480987Z",
+    "issued_at": 1794882472
+  },
+  "license_key": "TEST-2026-KY03-B8B4",
+  "fingerprint": "f2043f2142bb9dbf2b...",
+  "issued_at": 1794882472,
+  "expires_at": "2027-02-15T02:19:19.480987Z",
+  "activated_at": 1794882472,
+  "server": "http://localhost:8000/api/v1/client/activations"
+}
+```
+
 ## Структура
 
 ```text
 license_client/
-├── config/             # Публичный RSA ключ для подписи синхронного ключа (public_key.pem)
 ├── src/
+│   ├── config/         # Публичный RSA ключ для подписи синхронного ключа (public_key.pem)
 │   ├── api.py          # HTTP-запросы к серверу активации
 │   ├── collect.py      # Сбор информации об устройстве
 │   ├── crypto.py       # Логика шифрования (AES-256-GCM + RSA)
-│   └── main.py         # Точка входа (CLI + argparse)
+│   ├── commands.py     # Обработки активации и верификации
+│   ├── storage.py      # Обработка файлов (pub.pem, license.lic)
+│   └── main.py         # Точка входа (argparse)
 ├── tests/
 ├── pyproject.toml
 └── uv.lock 
@@ -86,20 +112,30 @@ make generate-keys
 
 ### 3. Использование CLI
 
+#### activate
+
 **Проверка формата и сухой прогон (без отправки на сервер):**
 Полезно для отладки и проверки того, какие именно данные будут отправлены
 
 ```shell
-PYTHONPATH=. uv run python src/main.py --dry-run ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
+PYTHONPATH=. uv run python src/main.py activate --dry-run ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
 ```
 
 **Полноценная активация:**
 
 ```shell
-PYTHONPATH=. uv run python src/main.py ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
+PYTHONPATH=. uv run python src/main.py activate ABCD-1234-EFGH-B6B6 http://localhost:8000/api/v1/client/activations
 ```
 
-*(Альтернативно, из корня проекта можно использовать: `make run-client <LICENSE_KEY>`)*
+*(Альтернативно, из корня проекта можно использовать: `make run-client-activation <LICENSE_KEY>`)*
+
+#### verify
+
+После активации скрипт создаст файл `license.lic`. Его можно проверить выполнив команду:
+
+```shell
+PYTHONPATH=. uv run python src/main.py verify
+```
 
 ## Тесты и линтеры
 
