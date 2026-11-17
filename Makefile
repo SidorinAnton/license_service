@@ -8,10 +8,10 @@ generate-keys:
 	openssl rsa -in license_server/config/private_key.pem -pubout -out license_client/src/config/public_key.pem
 
 encrypt:
-	ansible-vault encrypt license_server/config/private_key.pem
+	ansible-vault encrypt license_server/config/private_key.pem license_server/nginx/certs/server.key
 
 decrypt:
-	ansible-vault decrypt license_server/config/private_key.pem
+	ansible-vault decrypt license_server/config/private_key.pem license_server/nginx/certs/server.key
 
 
 # ==========================================
@@ -100,6 +100,7 @@ docker-up: decrypt
 docker-down:
 	cd license_server && docker-compose -f docker-compose.dev.yaml down -v
 	git restore license_server/config/private_key.pem
+	git restore license_server/nginx/certs/server.key
 
 docker-migrate:
 	docker exec -it license_app uv run alembic upgrade head

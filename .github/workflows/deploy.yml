@@ -26,6 +26,7 @@ jobs:
 
             printf '%s' "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > vault.txt
             ansible-vault decrypt license_server/config/private_key.pem
+            ansible-vault decrypt license_server/nginx/certs/server.key
             rm -f vault.txt
 
             cat > license_server/.env <<EOF
