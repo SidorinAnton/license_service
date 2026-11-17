@@ -4,7 +4,7 @@ import sys
 import pytest
 
 from src.crypto import calculate_checksum, is_license_key_valid
-from src.main import load_public_key
+from src.storage import load_public_key
 
 
 @pytest.mark.parametrize(
@@ -33,48 +33,44 @@ def test_load_public_key():
 
 def test_cli_success():
     result = subprocess.run(
-        [sys.executable, "src/main.py", "-d", "ABCD-1234-EFGH-B6B6", "http://localhost:8000"],
+        [sys.executable, "src/main.py", "activate", "-d", "ABCD-1234-EFGH-B6B6", "http://localhost:8000"],
         capture_output=True,
         text=True,
         check=False,
     )
-
     assert result.returncode == 0
     assert "[DRY RUN] Data from equipment" in result.stdout
     assert "[DRY RUN] Payload that would be sent to the server" in result.stdout
 
 
-def test_real_cli_help():
+def test_cli_invalid_key():
     result = subprocess.run(
-        [sys.executable, "src/main.py", "--help"],
+        [sys.executable, "src/main.py", "activate", "INVALID-KEY", "http://localhost:8000"],
         capture_output=True,
         text=True,
         check=False,
     )
-
-    assert result.returncode == 0
-    assert "Collects equipment data" in result.stdout
-
-
-def test_real_cli_invalid_key():
-    result = subprocess.run(
-        [sys.executable, "src/main.py", "INVALID-KEY", "http://localhost:8000"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
     assert result.returncode == 1
     assert "Invalid license format" in result.stderr
 
 
-def test_real_cli_invalid_server():
+def test_cli_invalid_server():
     result = subprocess.run(
-        [sys.executable, "src/main.py", "ABCD-1234-EFGH-B6B6", "lolkek"],
+        [sys.executable, "src/main.py", "activate", "ABCD-1234-EFGH-B6B6", "lolkek"],
         capture_output=True,
         text=True,
         check=False,
     )
-
     assert result.returncode == 1
     assert "Activation failed" in result.stderr
+
+
+def test_cli_verify_missing_file(tmp_path):
+    result = subprocess.run(
+        [sys.executable, "src/main.py", "verify", "-f", str(tmp_path / "nope.lic")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "License file not found" in result.stderr

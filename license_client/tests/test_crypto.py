@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from src.collect import Device
-from src.crypto import EncryptedPayload, encrypt_payload
+from src.crypto import EncryptedPayload, encrypt_payload, verify_activation_token
 
 
 @pytest.fixture
@@ -54,7 +54,6 @@ def decrypt_payload_on_server(encrypted: EncryptedPayload, private_key_pem: str)
         private_key_pem.encode("utf-8"),
         password=None,
     )
-
     # Получаем симметричный AES ключ
     aes_key = private_key.decrypt(
         base64.b64decode(encrypted.encrypted_sync_key),
@@ -64,14 +63,23 @@ def decrypt_payload_on_server(encrypted: EncryptedPayload, private_key_pem: str)
             label=None,
         ),
     )
-
     # Расшифровываем пэйлоад через AES-GCM
     aes_gcm = AESGCM(aes_key)
     decrypted_data_bytes = aes_gcm.decrypt(
         base64.b64decode(encrypted.nonce), base64.b64decode(encrypted.cipher_data), associated_data=None
     )
-
     return json.loads(decrypted_data_bytes.decode("utf-8"))
+
+
+def sign_token(payload: dict, private_pem: str) -> str:
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    private_key = serialization.load_pem_private_key(private_pem.encode(), password=None)
+    signature = private_key.sign(payload_bytes, padding.PKCS1v15(), hashes.SHA256())
+    packet = {
+        "payload": base64.b64encode(payload_bytes).decode(),
+        "signature": base64.b64encode(signature).decode(),
+    }
+    return base64.b64encode(json.dumps(packet).encode()).decode()
 
 
 def test_encrypt_and_decrypt_success(rsa_key_pair, device_data):
@@ -102,3 +110,40 @@ def test_encryption_hashsum_fails(rsa_key_pair, device_data):
 
     with pytest.raises(InvalidTag):
         decrypt_payload_on_server(encrypted, priv_pem)
+
+
+def test_verify_token_ok(rsa_key_pair):
+    priv_pem, pub_pem = rsa_key_pair
+    payload = {
+        "license_key": "ABCD-1234-EFGH-B6B6",
+        "fingerprint": "aaaa",
+        "expires_at": "2027-01-01",
+        "issued_at": 1700000000,
+    }
+    activation_token = sign_token(payload, priv_pem)
+    token = verify_activation_token(activation_token, pub_pem, "ABCD-1234-EFGH-B6B6")
+    assert token.license_key == "ABCD-1234-EFGH-B6B6"
+    assert token.fingerprint == "aaaa"
+    assert token.expires_at == "2027-01-01"
+    assert token.issued_at == 1700000000
+    assert token.raw_payload == payload
+    assert token.raw_token == activation_token
+
+
+def test_verify_token_tampered(rsa_key_pair):
+    priv_pem, pub_pem = rsa_key_pair
+    payload = {
+        "license_key": "ABCD-1234-EFGH-B6B6",
+        "fingerprint": "fp123",
+        "expires_at": None,
+        "issued_at": 1,
+    }
+    activation_token = sign_token(payload, priv_pem)
+
+    # подменяем payload внутри пакета
+    packet = json.loads(base64.b64decode(activation_token))
+    packet["payload"] = base64.b64encode(json.dumps({**payload, "expires_at": "2099-01-01"}).encode()).decode()
+    bad = base64.b64encode(json.dumps(packet).encode()).decode()
+
+    with pytest.raises(RuntimeError, match="Activation token signature is invalid"):
+        verify_activation_token(bad, pub_pem, "ABCD-1234-EFGH-B6B6")

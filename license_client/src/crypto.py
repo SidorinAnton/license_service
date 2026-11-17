@@ -5,6 +5,7 @@ import time
 import zlib
 from dataclasses import asdict, dataclass
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -25,6 +26,16 @@ class EncryptedPayload:
             "nonce": self.nonce,
             "cipher_data": self.cipher_data,
         }
+
+
+@dataclass
+class ActivationToken:
+    license_key: str
+    fingerprint: str
+    expires_at: str | int | None
+    issued_at: int
+    raw_payload: dict
+    raw_token: str
 
 
 def encrypt_payload(data: Device, public_key_pem: str) -> EncryptedPayload:
@@ -80,3 +91,35 @@ def is_license_key_valid(license_key: str) -> bool:
 
     expected_checksum = calculate_checksum(parts)
     return parts[3].upper() == expected_checksum
+
+
+def verify_activation_token(activation_token: str, public_key_pem: str, expected_license_key: str) -> ActivationToken:
+    try:
+        packet = json.loads(base64.b64decode(activation_token))
+        payload_bytes = base64.b64decode(packet["payload"])
+        signature = base64.b64decode(packet["signature"])
+    except (KeyError, ValueError) as e:
+        raise RuntimeError(f"Malformed activation token: {e}")
+
+    public_key = load_pem_public_key(public_key_pem.encode("utf-8"))
+    try:
+        public_key.verify(signature, payload_bytes, padding.PKCS1v15(), hashes.SHA256())
+    except InvalidSignature:
+        raise RuntimeError("Activation token signature is invalid")
+
+    try:
+        payload = json.loads(payload_bytes)
+    except ValueError as e:
+        raise RuntimeError(f"Malformed activation payload: {e}")
+
+    if payload.get("license_key") != expected_license_key:
+        raise RuntimeError("Activation token was issued for a different license key")
+
+    return ActivationToken(
+        license_key=payload["license_key"],
+        fingerprint=payload["fingerprint"],
+        expires_at=payload.get("expires_at"),
+        issued_at=payload["issued_at"],
+        raw_payload=payload,
+        raw_token=activation_token,
+    )

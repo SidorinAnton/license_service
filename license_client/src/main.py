@@ -1,88 +1,52 @@
 import argparse
-import importlib.resources
-import json
-import os
-import sys
-from dataclasses import asdict
-from pathlib import Path
 
-from src.api import send_activation
-from src.collect import get_device_data
-from src.crypto import encrypt_payload, is_license_key_valid
+__version__ = "1.1.0"
 
-__version__ = "1.0.0"
-
-
-def load_public_key(custom_path: str | None = None) -> str:
-    key_path_str = custom_path or os.getenv("LICENSE_PUBLIC_KEY_PATH")
-    if key_path_str:
-        key_path = Path(key_path_str)
-        if not key_path.exists():
-            print(f"Error: Public key not found at specified path: {key_path}", file=sys.stderr)
-            sys.exit(1)
-        return key_path.read_text(encoding="utf-8")
-
-    ref = importlib.resources.files("src").joinpath("config/public_key.pem")
-    if ref.is_file():
-        return ref.read_text(encoding="utf-8")
-
-    print(
-        "Error: Public key not found. Please provide it via --public-key option "
-        "or set LICENSE_PUBLIC_KEY_PATH environment variable.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+from src.commands import handle_activate, handle_verify
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Collects equipment data and registers it with the license service")
+    parser = argparse.ArgumentParser(
+        description="License client: activate and verify a license.",
+    )
     parser.add_argument("--version", action="version", version=f"License client {__version__}")
-    parser.add_argument(
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    parser_activate = sub.add_parser("activate", help="Activate license on this device")
+    parser_activate.add_argument("license_key", help="License number in the format XXXX-XXXX-XXXX-XXXX")
+    parser_activate.add_argument("server", help="License server URL (ex: https://localhost:8000)")
+    parser_activate.add_argument(
         "--dry-run",
         "-d",
         action="store_true",
-        help="Perform a dry run: collect data, encrypt it and print payload without sending it to the server",
+        help="Collect and encrypt data, print payload, do not send",
     )
-    parser.add_argument(
-        "--public-key",
-        "-k",
-        type=str,
-        default=None,
-        help="Path to custom public RSA key (.pem)",
+    parser_activate.add_argument(
+        "--public-key", "-k", type=str, default=None, help="Path to custom public RSA key (.pem)"
     )
-    parser.add_argument("license_key", help="License number in the format XXXX-XXXX-XXXX-XXXX")
-    parser.add_argument("server", help="License server URL (ex: https://localhost:8000)")
+    parser_activate.set_defaults(func=handle_activate)
+
+    parser_verify = sub.add_parser("verify", help="Verify saved license")
+    parser_verify.add_argument(
+        "--license-file", "-f", type=str, default=None, help="Path to license.lic (default: platform data dir)"
+    )
+    parser_verify.add_argument(
+        "--license-key", type=str, default=None, help="Expected license key (optional, defaults to stored one)"
+    )
+    parser_verify.add_argument(
+        "--public-key", "-k", type=str, default=None, help="Path to custom public RSA key (.pem)"
+    )
+    parser_verify.add_argument("--json", action="store_true", help="Print payload as JSON")
+    parser_verify.set_defaults(func=handle_verify)
+
     return parser
 
 
 def main():
     parser = build_parser()
     args = parser.parse_args()
-
-    if not is_license_key_valid(args.license_key):
-        print(
-            f"Error: Invalid license format: '{args.license_key}'. Expected format is XXXX-XXXX-XXXX-XXXX.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    device_data = get_device_data(args.license_key)
-    public_key_pem = load_public_key(args.public_key)
-    payload = encrypt_payload(device_data, public_key_pem)
-
-    if args.dry_run:
-        print("[DRY RUN] Data from equipment:")
-        print(json.dumps(asdict(device_data), indent=2))
-        print(f"\n[DRY RUN] Payload that would be sent to the server on {args.server}:")
-        print(json.dumps(payload.to_dict(), indent=2))
-        sys.exit(0)
-
-    try:
-        result = send_activation(args.server, payload)
-        print("Success:", result)
-    except RuntimeError as e:
-        print(f"Activation failed: {e}", file=sys.stderr)
-        sys.exit(1)
+    args.func(args)
 
 
 if __name__ == "__main__":
