@@ -1,0 +1,49 @@
+name: Deploy to Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /home/github/license-service
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            printf '%s' "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault.txt
+            ansible-vault view license_server/config/private_key.pem \
+              --vault-password-file /tmp/vault.txt > license_server/config/private_key.pem
+            rm -f /tmp/vault.txt
+
+            cat > license_server/.env <<EOF
+            ENVIRONMENT=prod
+            DEBUG=false
+            LICENSE_SALT=${{ secrets.LICENSE_SALT }}
+            DATABASE_URL=postgresql+psycopg://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}
+            PRIVATE_KEY_PATH=config/private_key.pem
+            HOST=0.0.0.0
+            PORT=8000
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            EOF
+
+            cd license_server
+            docker compose -f docker-compose.yaml down
+            docker compose -f docker-compose.yaml up -d --build
+            docker image prune -f
+

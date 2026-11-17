@@ -1,0 +1,125 @@
+- name: Server for License Service
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required system packages
+      apt:
+        name:
+          - curl
+          - git
+          - ufw
+          - acl
+        state: present
+
+    - name: Install Ansible (for ansible-vault on deploy)
+      ansible.builtin.apt:
+        name: ansible
+        state: present
+        update_cache: true
+
+    - name: Create 'github' deployment user
+      user:
+        name: github
+        shell: /bin/bash
+        create_home: yes
+        system: no
+
+    - name: Ensure .ssh directory exists for github user
+      file:
+        path: /home/github/.ssh
+        state: directory
+        owner: github
+        group: github
+        mode: '0700'
+
+    - name: Add local public SSH key to github user authorized_keys
+      authorized_key:
+        user: github
+        key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+
+    - name: Install Docker and Docker Compose prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Ensure apt keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker GPG apt key
+      ansible.builtin.shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Set up stable Docker repository
+      ansible.builtin.shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker Engine and Docker Compose plugin
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Add 'github' user to docker group
+      user:
+        name: github
+        groups: docker
+        append: yes
+
+    - name: Ensure Docker service is enabled and started
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Add deploy user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+
+    - name: Reset SSH connection to apply group changes
+      ansible.builtin.meta: reset_connection
+
+    - name: Allow SSH, HTTP, HTTPS through UFW
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: ["22", "80", "443"]
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Clone repository as github user
+      ansible.builtin.git:
+        repo: "https://github.com/SidorinAnton/license_service.git"
+        dest: /home/github/license-service
+        version: main
+        update: yes
+      become: yes
+      become_user: github
