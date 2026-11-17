@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:18
+    image: postgres:18-alpine
     container_name: license_postgres
     environment:
       POSTGRES_USER: admin
@@ -50,6 +50,20 @@ services:
       - ./src:/app/src
       - ./tests:/app/tests
       - ./alembic.ini:/app/alembic.ini
+    networks:
+      - license_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: license_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      app:
+        condition: service_healthy
     networks:
       - license_net
 
