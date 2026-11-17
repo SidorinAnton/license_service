@@ -22,14 +22,29 @@
 2. Дешифрация `cipher_data` с использованием полученного симметричного AES-ключа
 3. Валидация формата данных и `timestamp`
 4. Проверка в БД: существование лицензии, её статус (`is_active`) и срок действия (`expires_at`)
-5. Сохранение записи в таблицу `activations` и возврат ответа.
+5. Сохранение записи в таблицу `activations` и генерация активированного токена
 
 **Успешный ответ:**
+
+Данные токена:
+
+```json
+{
+  "payload": {
+    "license_key": "<лицензионный ключ клиента>",
+    "fingerprint": "<сгенерированный отпечаток оборудования>",
+    "expires_at": "<дата протухания>",
+    "issued_at": "<дата выдачи>"
+  },
+  "signature": "RSA_private.sign(payload)"
+}
+```
 
 ```json
 {
   "status": "success",
-  "message": "License successfully activated on this device"
+  "message": "License successfully activated on this device",
+  "activation_token": "<base64 строка: payload + signature>"
 }
 ```
 
