@@ -187,3 +187,17 @@ def test_handle_verify_no_activation_token(tmp_path):
         handle_verify(args)
 
     assert exc_info.value.code == 1
+
+
+def test_handle_verify_permission_denied(mocker, tmp_path):
+    lic_file = tmp_path / "license.lic"
+    lic_file.write_text("data")
+
+    mocker.patch("json.loads", side_effect=PermissionError("Access denied"))
+
+    args = argparse.Namespace(license_file=str(lic_file), license_key=None, public_key=None, json=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        handle_verify(args)
+
+    assert exc_info.value.code == 1

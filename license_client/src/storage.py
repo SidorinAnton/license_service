@@ -17,6 +17,13 @@ LICENSE_PATH = LICENSE_DIR / "license.lic"
 def save_license(data: dict[str, Any], path: Path = LICENSE_PATH) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    # TODO завести эту штуку и на винде
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
     return path
 
 
@@ -28,6 +35,8 @@ def load_license(path: Path = LICENSE_PATH) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except ValueError as e:
         raise RuntimeError(f"Malformed license file at {path}: {e}")
+    except PermissionError as e:
+        raise RuntimeError(f"Permission denied to read license file at {path}: {e}")
 
 
 def load_public_key(custom_path: str | None = None) -> str:

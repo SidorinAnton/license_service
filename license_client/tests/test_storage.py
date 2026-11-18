@@ -53,3 +53,15 @@ def test_load_public_key_not_found():
         load_public_key("nonexistent_path.pem")
 
     assert exc_info.value.code == 1
+
+
+def test_save_license_sets_secure_permissions_unix(tmp_path):
+    lic_path = tmp_path / "license.lic"
+    data = {"license_key": "ABCD-1234-EFGH-B6B6"}
+
+    save_license(data, path=lic_path)
+    assert lic_path.exists()
+
+    if os.name != "nt":
+        file_mode = os.stat(lic_path).st_mode & 0o777
+        assert file_mode == 0o600
