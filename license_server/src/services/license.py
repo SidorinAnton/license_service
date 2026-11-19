@@ -105,14 +105,11 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     new_activation = ActivationModel(
         license_id=license_obj.id,
         fingerprint=fingerprint_db,
-        machine_id=device_data.machine_id,
         os_system=device_data.os_system,
         os_release=device_data.os_release,
         os_version=device_data.os_version,
         cpu_arch=device_data.cpu_arch,
         cpu_cores=device_data.cpu_cores,
-        mac_address=device_data.mac_address,
-        disk_serial_number=device_data.disk_serial_number,
     )
 
     db.add(new_activation)

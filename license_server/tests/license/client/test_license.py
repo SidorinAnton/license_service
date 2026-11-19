@@ -54,6 +54,7 @@ def test_activate_license_success(db_session, sample_license):
     expected_client_fp = hashlib.sha256(raw_fp).hexdigest()
 
     assert activations[0].fingerprint == expected_db_fp
+    assert activations[0].os_system == device_data.os_system
 
     token_payload = ActivationTokenPayload(
         license_key=sample_license.key,
@@ -68,8 +69,6 @@ def test_activate_license_success(db_session, sample_license):
         "activation_token": sign_activation_token(token_payload),
     }
     assert len(activations) == 1
-    assert activations[0].machine_id == device_data.machine_id
-    assert activations[0].os_system == device_data.os_system
 
 
 def test_activate_license_same_key_and_device(db_session, sample_license):
@@ -79,12 +78,7 @@ def test_activate_license_same_key_and_device(db_session, sample_license):
     with pytest.raises(LicenseAlreadyActivatedError, match="This license has already been activated"):
         activate_device_service(db=db_session, device_data=device_data)
 
-    assert (
-        db_session.query(ActivationModel)
-        .filter_by(license_id=sample_license.id, machine_id=device_data.machine_id)
-        .count()
-        == 1
-    )
+    assert db_session.query(ActivationModel).filter_by(license_id=sample_license.id).count() == 1
 
 
 def test_activate_license_idempotent_when_limit_reached(db_session, multi_activation_license):
@@ -128,13 +122,23 @@ def test_activate_license_limit_reached_default_one(db_session, sample_license):
 def test_activate_license_multiple_activations_allowed(db_session, multi_activation_license):
     key = multi_activation_license.key
 
+    expected_fingerprints = set()
     for i in range(3):
-        result = activate_device_service(db=db_session, device_data=get_device_data(key, f"machine-{i}"))
+        data = get_device_data(key, f"machine-{i}")
+        result = activate_device_service(db=db_session, device_data=data)
         assert result["status"] == "success"
+
+        expected_fingerprints.add(
+            hmac.new(
+                key=settings.LICENSE_SALT.encode("utf-8"),
+                msg=generate_device_fingerprint(data).encode("utf-8"),
+                digestmod=hashlib.sha256,
+            ).hexdigest()
+        )
 
     activations = db_session.query(ActivationModel).filter_by(license_id=multi_activation_license.id).all()
     assert len(activations) == 3
-    assert {a.machine_id for a in activations} == {"machine-0", "machine-1", "machine-2"}
+    assert {a.fingerprint for a in activations} == expected_fingerprints
 
     with pytest.raises(LicenseActivationLimitReachedError, match="Activation limit reached for this license"):
         activate_device_service(db=db_session, device_data=get_device_data(key, "machine-3"))
@@ -147,13 +151,20 @@ def test_activate_different_licenses_same_machine(db_session):
     license_1 = LicenseFactory(key="AAAA-AAAA-AAAA-4366")
     license_2 = LicenseFactory(key="BBBB-BBBB-BBBB-769F")
 
+    data = get_device_data("XXXX-XXXX-XXXX-E4C2", "id")
+    fingerprint = hmac.new(
+        key=settings.LICENSE_SALT.encode("utf-8"),
+        msg=generate_device_fingerprint(data).encode("utf-8"),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+
     result_1 = activate_device_service(db=db_session, device_data=get_device_data(license_1.key, machine_id="id"))
     result_2 = activate_device_service(db=db_session, device_data=get_device_data(license_2.key, machine_id="id"))
 
     assert result_1["status"] == "success"
     assert result_2["status"] == "success"
 
-    activations = db_session.query(ActivationModel).filter_by(machine_id="id").all()
+    activations = db_session.query(ActivationModel).filter_by(fingerprint=fingerprint).all()
 
     assert len(activations) == 2
     assert {act.license.key for act in activations} == {"AAAA-AAAA-AAAA-4366", "BBBB-BBBB-BBBB-769F"}

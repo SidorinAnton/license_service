@@ -30,9 +30,6 @@ class ActivationModel(Base):
     license_id = Column(Integer, ForeignKey("licenses.id"), nullable=False)
     fingerprint = Column(String, index=True, nullable=False)
 
-    machine_id = Column(String, nullable=True)
-    disk_serial_number = Column(String, nullable=True)
-    mac_address = Column(String, nullable=True)
     os_system = Column(String, nullable=False)
     os_release = Column(String, nullable=False)
     os_version = Column(String, nullable=False)

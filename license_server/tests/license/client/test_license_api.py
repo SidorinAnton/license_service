@@ -27,7 +27,7 @@ def test_activate_endpoint_success(client, db_session, sample_license):
     response = client.post("/api/v1/client/activations", json=build_http_payload(data))
     assert response.status_code == 200
 
-    act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id, machine_id="aaa").one()
+    act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).one()
 
     raw_fp = generate_device_fingerprint(
         DeviceDataSchema(
@@ -65,7 +65,6 @@ def test_activate_endpoint_success(client, db_session, sample_license):
         "activation_token": sign_activation_token(token_payload),
     }
     assert act.license_id == sample_license.id
-    assert act.machine_id == "aaa"
 
 
 def test_activate_endpoint_idempotent(client, db_session, sample_license):
