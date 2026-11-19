@@ -204,11 +204,24 @@ def test_handle_verify_expired(mocker, rsa_key_pair, tmp_path):
     assert exc_info.value.code == 2
 
 
-def test_handle_verify_not_same_device(mocker, rsa_key_pair, tmp_path):
+def test_handle_verify_not_same_device(mocker, rsa_key_pair, tmp_path, capsys):
     priv_pem, pub_pem = rsa_key_pair
     lic_file = tmp_path / "license.lic"
 
-    mock_device = Device(
+    issued_device = Device(
+        license_key="ABCD-1234-EFGH-B6B6",
+        os_system="Linux",
+        os_release="6.8.0-147-generic",
+        os_version="#147-Ubuntu SMP PREEMPT_DYNAMIC",
+        cpu_arch="x86_64",
+        cpu_cores=8,
+        mac_address="00:00:00:00:00:00",
+        machine_id="from_same_machine",
+        disk_serial_number="ABCDEFGHIJKLMNO",
+    )
+    expected_fingerprint = calculate_device_fingerprint(issued_device)
+
+    current_device = Device(
         license_key="ABCD-1234-EFGH-B6B6",
         os_system="Linux",
         os_release="6.8.0-147-generic",
@@ -219,16 +232,14 @@ def test_handle_verify_not_same_device(mocker, rsa_key_pair, tmp_path):
         machine_id="from_another_machine",
         disk_serial_number="ABCDEFGHIJKLMNO",
     )
-    mocker.patch("src.commands.get_device_data", return_value=mock_device)
-
-    mock_device.machine_id = "from_same_machine"
-    expected_fingerprint = calculate_device_fingerprint(mock_device)
+    mocker.patch("src.commands.get_device_data", return_value=current_device)
+    mocker.patch("src.commands.load_public_key", return_value=pub_pem)
 
     token_payload = {
         "license_key": "ABCD-1234-EFGH-B6B6",
         "fingerprint": expected_fingerprint,
-        "expires_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
-        "issued_at": int(datetime.now(UTC).timestamp() - 86400),
+        "expires_at": (datetime.now(UTC) + timedelta(days=10)).isoformat(),
+        "issued_at": int(datetime.now(UTC).timestamp()),
     }
     valid_token_str = sign_token(token_payload, priv_pem)
 
@@ -240,14 +251,13 @@ def test_handle_verify_not_same_device(mocker, rsa_key_pair, tmp_path):
     }
     lic_file.write_text(json.dumps(license_data), encoding="utf-8")
 
-    mocker.patch("src.commands.load_public_key", return_value=pub_pem)
-
     args = argparse.Namespace(license_file=str(lic_file), license_key=None, public_key=None, json=False)
 
     with pytest.raises(SystemExit) as exc_info:
         handle_verify(args)
 
-    assert exc_info.value.code == 2
+    assert exc_info.value.code == 1
+    assert "not bound to this device" in capsys.readouterr().err
 
 
 def test_handle_verify_no_activation_token(tmp_path):
