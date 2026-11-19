@@ -1,3 +1,4 @@
+import hashlib
 import os
 import platform
 import subprocess
@@ -42,6 +43,35 @@ def get_device_data(license_key: str) -> Device:
         machine_id=machine_id,
         disk_serial_number=_disk_serial(),
     )
+
+
+def calculate_device_fingerprint(device_data: Device) -> str:
+    def _normalization(val) -> str:
+        if val is None:
+            return "none"
+        s = str(val).strip()
+        return s if s else "none"
+
+    raw_str = "|".join(
+        [
+            "v1-weak",
+            f"os_system={_normalization(device_data.os_system)}",
+            f"os_version={_normalization(device_data.os_version)}",
+            f"os_release={_normalization(device_data.os_release)}",
+            f"cpu_arch={_normalization(device_data.cpu_arch)}",
+            f"cpu_cores={_normalization(device_data.cpu_cores)}",
+            f"mac={_normalization(device_data.mac_address)}",
+        ]
+    )
+    if device_data.machine_id or device_data.disk_serial_number:
+        raw_str = "|".join(
+            [
+                "v1",
+                f"machine_id={_normalization(device_data.machine_id)}",
+                f"disk_serial={_normalization(device_data.disk_serial_number)}",
+            ]
+        )
+    return hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
 
 
 def _disk_serial() -> str | None:

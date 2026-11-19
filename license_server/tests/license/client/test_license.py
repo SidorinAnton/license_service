@@ -1,4 +1,6 @@
 import concurrent.futures
+import hashlib
+import hmac
 import threading
 import time
 from datetime import UTC, datetime, timedelta
@@ -7,6 +9,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+from src.core.config import settings
 from src.core.exceptions import (
     LicenseActivationLimitReachedError,
     LicenseAlreadyActivatedError,
@@ -42,9 +45,19 @@ def test_activate_license_success(db_session, sample_license):
 
     activations = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).all()
 
+    raw_fp = generate_device_fingerprint(device_data).encode("utf-8")
+    expected_db_fp = hmac.new(
+        key=settings.LICENSE_SALT.encode("utf-8"),
+        msg=raw_fp,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    expected_client_fp = hashlib.sha256(raw_fp).hexdigest()
+
+    assert activations[0].fingerprint == expected_db_fp
+
     token_payload = ActivationTokenPayload(
         license_key=sample_license.key,
-        fingerprint=activations[0].fingerprint,
+        fingerprint=expected_client_fp,
         expires_at=sample_license.expires_at,
         issued_at=int(activations[0].activated_at.timestamp()),
     )

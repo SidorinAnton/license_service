@@ -1,6 +1,9 @@
 import base64
+import hashlib
+import hmac
 import time
 
+from src.core.config import settings
 from src.models.license import ActivationModel
 from src.schemas.license import ActivationTokenPayload, DeviceDataSchema
 from src.services.crypto import sign_activation_token
@@ -26,21 +29,7 @@ def test_activate_endpoint_success(client, db_session, sample_license):
 
     act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id, machine_id="aaa").one()
 
-    token_payload = ActivationTokenPayload(
-        license_key=sample_license.key,
-        fingerprint=act.fingerprint,
-        expires_at=sample_license.expires_at,
-        issued_at=int(act.activated_at.timestamp()),
-    )
-
-    assert response.json() == {
-        "status": "success",
-        "message": "License successfully activated on this device",
-        "activation_token": sign_activation_token(token_payload),
-    }
-    assert act.license_id == sample_license.id
-    assert act.machine_id == "aaa"
-    assert act.fingerprint == generate_device_fingerprint(
+    raw_fp = generate_device_fingerprint(
         DeviceDataSchema(
             license_key=sample_license.key,
             machine_id="aaa",
@@ -53,21 +42,64 @@ def test_activate_endpoint_success(client, db_session, sample_license):
             mac_address="fff",
             timestamp=int(time.time()),
         )
+    ).encode("utf-8")
+    expected_db_fp = hmac.new(
+        key=settings.LICENSE_SALT.encode("utf-8"),
+        msg=raw_fp,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    expected_client_fp = hashlib.sha256(raw_fp).hexdigest()
+
+    assert act.fingerprint == expected_db_fp
+
+    token_payload = ActivationTokenPayload(
+        license_key=sample_license.key,
+        fingerprint=expected_client_fp,
+        expires_at=sample_license.expires_at,
+        issued_at=int(act.activated_at.timestamp()),
     )
+
+    assert response.json() == {
+        "status": "success",
+        "message": "License successfully activated on this device",
+        "activation_token": sign_activation_token(token_payload),
+    }
+    assert act.license_id == sample_license.id
+    assert act.machine_id == "aaa"
 
 
 def test_activate_endpoint_idempotent(client, db_session, sample_license):
-    data = build_http_payload(encrypt_test_payload(sample_license.key, machine_id="same-machine"))
+    data = build_http_payload(
+        encrypt_test_payload(sample_license.key, machine_id="same-machine", disk_serial_number="aaaa")
+    )
     response_1 = client.post("/api/v1/client/activations", json=data)
     assert response_1.status_code == 200
 
     act = db_session.query(ActivationModel).filter_by(license_id=sample_license.id).first()
+
+    raw_fp = generate_device_fingerprint(
+        DeviceDataSchema(
+            license_key=sample_license.key,
+            machine_id="same-machine",
+            disk_serial_number="aaaa",
+            os_system="Linux",
+            os_release="abc",
+            os_version="aaa",
+            cpu_arch="bbb",
+            cpu_cores=8,
+            mac_address="ccc",
+            timestamp=int(time.time()),
+        )
+    ).encode("utf-8")
+    expected_client_fp = hashlib.sha256(raw_fp).hexdigest()
+
     token_payload = ActivationTokenPayload(
         license_key=sample_license.key,
-        fingerprint=act.fingerprint,
+        fingerprint=expected_client_fp,
         expires_at=sample_license.expires_at,
         issued_at=int(act.activated_at.timestamp()),
     )
+
     assert response_1.json() == {
         "status": "success",
         "message": "License successfully activated on this device",

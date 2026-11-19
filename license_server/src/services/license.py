@@ -32,7 +32,7 @@ def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
         s = str(val).strip()
         return s if s else "none"
 
-    raw_str = "|".join(
+    fingerprint = "|".join(
         [
             "v1-weak",
             f"os_system={_normalization(device_data.os_system)}",
@@ -43,21 +43,15 @@ def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
             f"mac={_normalization(device_data.mac_address)}",
         ]
     )
-
     if device_data.machine_id or device_data.disk_serial_number:
-        raw_str = "|".join(
+        fingerprint = "|".join(
             [
                 "v1",
                 f"machine_id={_normalization(device_data.machine_id)}",
                 f"disk_serial={_normalization(device_data.disk_serial_number)}",
             ]
         )
-
-    return hmac.new(
-        key=settings.LICENSE_SALT.encode("utf-8"),
-        msg=raw_str.encode("utf-8"),
-        digestmod=hashlib.sha256,
-    ).hexdigest()
+    return fingerprint
 
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
@@ -69,7 +63,13 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:
         raise TimestampExpiredError("Payload expired or invalid timestamp")
 
-    fingerprint = generate_device_fingerprint(device_data)
+    fingerprint = generate_device_fingerprint(device_data).encode("utf-8")
+    fingerprint_db = hmac.new(
+        key=settings.LICENSE_SALT.encode("utf-8"),
+        msg=fingerprint,
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    fingerprint_client = hashlib.sha256(fingerprint).hexdigest()
 
     # Все одинаковые параллельные license_key тут встанут до commit/rollback
     license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).with_for_update().first()
@@ -89,7 +89,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     activations = db.query(ActivationModel.id, ActivationModel.fingerprint).filter_by(license_id=license_obj.id).all()
 
     for row in activations:
-        if fingerprint in row:
+        if fingerprint_db in row:
             logger.warning("License %s is already activated", license_obj.id)
             raise LicenseAlreadyActivatedError("This license has already been activated")
 
@@ -104,7 +104,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
 
     new_activation = ActivationModel(
         license_id=license_obj.id,
-        fingerprint=fingerprint,
+        fingerprint=fingerprint_db,
         machine_id=device_data.machine_id,
         os_system=device_data.os_system,
         os_release=device_data.os_release,
@@ -126,7 +126,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
             db.query(ActivationModel)
             .filter(
                 ActivationModel.license_id == license_obj.id,
-                ActivationModel.fingerprint == fingerprint,
+                ActivationModel.fingerprint == fingerprint_db,
             )
             .first()
         )
@@ -138,16 +138,12 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
 
     token_payload = ActivationTokenPayload(
         license_key=license_obj.key,
-        fingerprint=fingerprint,
+        fingerprint=fingerprint_client,
         expires_at=license_obj.expires_at,
         issued_at=int(new_activation.activated_at.timestamp()),
     )
 
-    logger.info(
-        "Successfully activated license ID %s for fingerprint prefix: %s...",
-        license_obj.id,
-        fingerprint[:8],
-    )
+    logger.info("Successfully activated license ID %s", license_obj.id)
     return {
         "status": "success",
         "message": "License successfully activated on this device",

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.api import send_activation
-from src.collect import get_device_data
+from src.collect import calculate_device_fingerprint, get_device_data
 from src.crypto import (
     encrypt_payload,
     is_license_key_valid,
@@ -58,7 +58,6 @@ def handle_activate(args: argparse.Namespace) -> None:
 
     license_data = {
         "activation_token": token.raw_token,
-        "payload": token.raw_payload,
         "license_key": token.license_key,
         "fingerprint": token.fingerprint,
         "issued_at": token.issued_at,
@@ -97,6 +96,13 @@ def handle_verify(args: argparse.Namespace) -> None:
         )
     except RuntimeError as e:
         print(f"Verification failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    current_device = get_device_data(token.license_key)
+    current_fingerprint = calculate_device_fingerprint(current_device)
+
+    if token.fingerprint != current_fingerprint:
+        print("Verification failed: license is not bound to this device", file=sys.stderr)
         sys.exit(1)
 
     if _is_expired(token.expires_at):

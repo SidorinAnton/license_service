@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from src.collect import Device, calculate_device_fingerprint
 from src.commands import _parse_expires_at, handle_activate, handle_verify
 from tests.conftest import sign_token
 
@@ -121,9 +122,24 @@ def test_handle_verify_success(mocker, rsa_key_pair, tmp_path):
     priv_pem, pub_pem = rsa_key_pair
     lic_file = tmp_path / "license.lic"
 
+    mock_device = Device(
+        license_key="ABCD-1234-EFGH-B6B6",
+        os_system="Linux",
+        os_release="6.8.0-147-generic",
+        os_version="#147-Ubuntu SMP PREEMPT_DYNAMIC",
+        cpu_arch="x86_64",
+        cpu_cores=8,
+        mac_address="00:00:00:00:00:00",
+        machine_id="abcdefghijklmnopqrstuwvxyz123456",
+        disk_serial_number="ABCDEFGHIJKLMNO",
+    )
+    mocker.patch("src.commands.get_device_data", return_value=mock_device)
+
+    expected_fingerprint = calculate_device_fingerprint(mock_device)
+
     token_payload = {
         "license_key": "ABCD-1234-EFGH-B6B6",
-        "fingerprint": "abc123fp",
+        "fingerprint": expected_fingerprint,
         "expires_at": (datetime.now(UTC) + timedelta(days=10)).isoformat(),
         "issued_at": int(datetime.now(UTC).timestamp()),
     }
@@ -133,7 +149,7 @@ def test_handle_verify_success(mocker, rsa_key_pair, tmp_path):
         "activation_token": valid_token_str,
         "payload": token_payload,
         "license_key": "ABCD-1234-EFGH-B6B6",
-        "fingerprint": "abc123fp",
+        "fingerprint": expected_fingerprint,
     }
     lic_file.write_text(json.dumps(license_data), encoding="utf-8")
 
@@ -147,10 +163,25 @@ def test_handle_verify_expired(mocker, rsa_key_pair, tmp_path):
     priv_pem, pub_pem = rsa_key_pair
     lic_file = tmp_path / "license.lic"
 
+    mock_device = Device(
+        license_key="ABCD-1234-EFGH-B6B6",
+        os_system="Linux",
+        os_release="6.8.0-147-generic",
+        os_version="#147-Ubuntu SMP PREEMPT_DYNAMIC",
+        cpu_arch="x86_64",
+        cpu_cores=8,
+        mac_address="00:00:00:00:00:00",
+        machine_id="abcdefghijklmnopqrstuwvxyz123456",
+        disk_serial_number="ABCDEFGHIJKLMNO",
+    )
+    mocker.patch("src.commands.get_device_data", return_value=mock_device)
+
+    expected_fingerprint = calculate_device_fingerprint(mock_device)
+
     token_payload = {
         "license_key": "ABCD-1234-EFGH-B6B6",
-        "fingerprint": "abc123fp",
-        "expires_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(),  # Просрочено
+        "fingerprint": expected_fingerprint,  # ← ИСПРАВЛЕНО
+        "expires_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
         "issued_at": int(datetime.now(UTC).timestamp() - 86400),
     }
     valid_token_str = sign_token(token_payload, priv_pem)
@@ -159,6 +190,53 @@ def test_handle_verify_expired(mocker, rsa_key_pair, tmp_path):
         "activation_token": valid_token_str,
         "payload": token_payload,
         "license_key": "ABCD-1234-EFGH-B6B6",
+        "fingerprint": expected_fingerprint,
+    }
+    lic_file.write_text(json.dumps(license_data), encoding="utf-8")
+
+    mocker.patch("src.commands.load_public_key", return_value=pub_pem)
+
+    args = argparse.Namespace(license_file=str(lic_file), license_key=None, public_key=None, json=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        handle_verify(args)
+
+    assert exc_info.value.code == 2
+
+
+def test_handle_verify_not_same_device(mocker, rsa_key_pair, tmp_path):
+    priv_pem, pub_pem = rsa_key_pair
+    lic_file = tmp_path / "license.lic"
+
+    mock_device = Device(
+        license_key="ABCD-1234-EFGH-B6B6",
+        os_system="Linux",
+        os_release="6.8.0-147-generic",
+        os_version="#147-Ubuntu SMP PREEMPT_DYNAMIC",
+        cpu_arch="x86_64",
+        cpu_cores=8,
+        mac_address="00:00:00:00:00:00",
+        machine_id="from_another_machine",
+        disk_serial_number="ABCDEFGHIJKLMNO",
+    )
+    mocker.patch("src.commands.get_device_data", return_value=mock_device)
+
+    mock_device.machine_id = "from_same_machine"
+    expected_fingerprint = calculate_device_fingerprint(mock_device)
+
+    token_payload = {
+        "license_key": "ABCD-1234-EFGH-B6B6",
+        "fingerprint": expected_fingerprint,
+        "expires_at": (datetime.now(UTC) - timedelta(days=1)).isoformat(),
+        "issued_at": int(datetime.now(UTC).timestamp() - 86400),
+    }
+    valid_token_str = sign_token(token_payload, priv_pem)
+
+    license_data = {
+        "activation_token": valid_token_str,
+        "payload": token_payload,
+        "license_key": "ABCD-1234-EFGH-B6B6",
+        "fingerprint": expected_fingerprint,
     }
     lic_file.write_text(json.dumps(license_data), encoding="utf-8")
 
