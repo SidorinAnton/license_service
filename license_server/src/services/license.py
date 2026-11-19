@@ -62,9 +62,8 @@ def generate_device_fingerprint(device_data: DeviceDataSchema) -> str:
 
 def activate_device_service(db: Session, device_data: DeviceDataSchema):
     logger.info(
-        "Processing activation request for license: %s -- (machine_id: %s)",
-        device_data.license_key,
-        device_data.machine_id,
+        "Processing activation request for license: %s",
+        "...-" + device_data.license_key.split("-")[-1],
     )
 
     if abs(int(time.time()) - device_data.timestamp) > TIMESTAMP_TTL:
@@ -76,7 +75,7 @@ def activate_device_service(db: Session, device_data: DeviceDataSchema):
     license_obj = db.query(LicenseModel).filter(LicenseModel.key == device_data.license_key).with_for_update().first()
 
     if license_obj is None:
-        logger.warning("License key %s not found in database", device_data.license_key)
+        logger.warning("License key %s not found in database", "...-" + device_data.license_key.split("-")[-1])
         raise LicenseNotFoundError("License key not found")
 
     if not license_obj.is_active:
