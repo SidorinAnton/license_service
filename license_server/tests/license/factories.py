@@ -1,7 +1,7 @@
 import random
 import string
 import zlib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import factory
 
@@ -30,7 +30,7 @@ class LicenseFactory(SQLAlchemyModelFactory):
 
     key = factory.LazyFunction(generate_valid_license_key)
     is_active = True
-    expires_at = factory.LazyFunction(lambda: datetime.now() + timedelta(days=30))
+    expires_at = factory.LazyFunction(lambda: datetime.now(UTC) + timedelta(days=30))
     max_activations = 1
 
 

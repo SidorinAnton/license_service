@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -31,4 +31,4 @@ def inactive_license(license_factory):
 
 @pytest.fixture
 def expired_license(license_factory):
-    return license_factory(expires_at=datetime.now() - timedelta(days=1))
+    return license_factory(expires_at=datetime.now(UTC) - timedelta(days=1))
