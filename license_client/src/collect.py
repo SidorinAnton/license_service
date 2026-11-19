@@ -74,7 +74,7 @@ def calculate_device_fingerprint(device_data: Device) -> str:
     return hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
 
 
-def _disk_serial() -> str | None:
+def _disk_serial(timeout=5) -> str | None:
     system = platform.system()
     try:
         if system == "Linux":
@@ -90,26 +90,33 @@ def _disk_serial() -> str | None:
             out = subprocess.check_output(
                 [
                     "powershell",
+                    "-NoProfile",
+                    "-NonInteractive",
                     "-Command",
                     "Get-CimInstance Win32_DiskDrive | Select-Object -First 1 -ExpandProperty SerialNumber",
                 ],
                 text=True,
+                timeout=timeout,
             )
             s = out.strip()
             return s if s else None
 
         if system == "Darwin":
-            out = subprocess.check_output(["ioreg", "-rd1", "-w0", "-c", "AppleANS2Controller"], text=True)
-            for line in out.splitlines():
-                if '"Serial Number"' in line:
-                    return line.split('"')[-2].strip()
-
-            out = subprocess.check_output(["ioreg", "-rd1", "-w0", "-c", "AppleAHCIDiskDriver"], text=True)
-            for line in out.splitlines():
-                if '"Serial Number"' in line:
-                    return line.split('"')[-2].strip()
+            for controller in ("AppleANS2Controller", "AppleAHCIDiskDriver"):
+                out = subprocess.check_output(
+                    ["ioreg", "-rd1", "-w0", "-c", controller],
+                    text=True,
+                    timeout=timeout,
+                )
+                for line in out.splitlines():
+                    if '"Serial Number"' in line:
+                        serial = line.split('"')[-2].strip()
+                        if serial:
+                            return serial
             return None
 
+    except subprocess.TimeoutExpired:
+        return None
     except:  # noqa E722
         return None
     return None
