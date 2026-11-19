@@ -6,7 +6,6 @@ import time
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from src.services.crypto import load_private_key
 
@@ -36,8 +35,7 @@ def encrypt_test_payload(
         "timestamp": timestamp or int(time.time()),
     }
 
-    private_key_pem = load_private_key()
-    private_key = load_pem_private_key(private_key_pem, password=None)
+    private_key = load_private_key()
     public_key = private_key.public_key()
 
     aes_key = AESGCM.generate_key(bit_length=256)

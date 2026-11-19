@@ -7,7 +7,6 @@ import pytest
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
 from src.core.exceptions import DecryptionError
 from src.schemas.license import ActivationTokenPayload
@@ -134,8 +133,7 @@ def test_sign_activation_token_success():
     payload_bytes = base64.b64decode(decoded_packet["payload"])
     signature_bytes = base64.b64decode(decoded_packet["signature"])
 
-    private_key_pem = load_private_key()
-    private_key = load_pem_private_key(private_key_pem, password=None)
+    private_key = load_private_key()
     public_key = private_key.public_key()
 
     public_key.verify(
